@@ -9,6 +9,7 @@ HealthLink does not stop at copying health values into Home Assistant. It connec
 ## Why HealthLink?
 
 - **No YAML required.** The default setup automatically discovers Apple Health sensors already exposed by the official Home Assistant iOS Companion app.
+- **No extra iPhone app for normal use.** The standard path uses the official Home Assistant iOS app users already have.
 - **Health Composer.** Build a new HA sensor from a HealthKit metric plus another HealthKit or Home Assistant entity without writing code.
 - **Personal baseline.** Compare HRV, resting heart rate, sleep and activity against the user's own recent history instead of a universal threshold.
 - **Health + Home timeline.** Place health samples and home/environment states on the same time axis.
@@ -16,35 +17,39 @@ HealthLink does not stop at copying health values into Home Assistant. It connec
 - **Recorder protection.** Raw health samples live in a private HealthLink SQLite store; only selected metrics become HA entities.
 - **Local-first privacy.** No cloud relay, telemetry or external analytics service is required.
 - **Private by default.** HealthLink Studio and raw health-data APIs are administrator-only; sensitive entity exposure is opt-in.
-- **Full HealthKit protocol.** The HA side accepts normalized quantity, category, workout, route, ECG, audiogram, clinical/FHIR, medication, assessment and other structured objects through the optional HealthLink Bridge protocol.
+- **Efficient Companion ingestion.** Frequent Apple Health updates are batched before database/entity refreshes, and repeated equal values are preserved when Home Assistant reports them as new samples.
 
 ## What HealthLink actually is
 
 **HealthLink is a Home Assistant HACS integration.** The standard mode does **not** require a separate HealthLink iOS app.
 
-The normal data path is: **Apple Health / HealthKit → official Home Assistant iPhone app → HA `mobile_app` health sensors → HealthLink**. HealthLink then stores, combines and analyzes the data locally in Home Assistant.
+The normal data path is:
 
-For HealthKit object families the official Companion app does not expose yet, HealthLink keeps an advanced normalized transport protocol. The preferred long-term implementation is to contribute that transport upstream to the official Home Assistant iOS app. A standalone HealthLink iOS Bridge is a fallback/advanced option, not a normal installation requirement. See [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md).
+**Apple Health / HealthKit → official Home Assistant iPhone app → HA `mobile_app` health sensors → HealthLink**
 
-## Current data paths
+HealthLink then stores, combines and analyzes the data locally in Home Assistant.
 
-### 1. Recommended / easiest: Home Assistant Companion
+For HealthKit object families the official Companion app does not expose yet, HealthLink retains a server-side normalized transport protocol for future expansion. The preferred long-term implementation is to contribute broader HealthKit support to the official Home Assistant iOS app. A standalone HealthLink iOS Bridge remains an advanced fallback, not a normal installation requirement. See [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md).
 
-For current Apple Health sensors exposed by the official HA iOS app:
+## Easiest setup
 
-1. Install HealthLink.
+1. Install **HealthLink** from HACS.
 2. Add **HealthLink** in **Settings → Devices & services**.
 3. On iPhone open **Home Assistant → Settings → Sensors → Apple Health Sensors**.
-4. Enable the health sensors you want. If your Companion version shows **Enable all Apple Health sensors**, you can use it for the easiest setup.
-5. Open HealthLink from the HA sidebar. Discovery and import are automatic.
+4. Enable the Apple Health sensors you want.
+5. Open **HealthLink** from the Home Assistant sidebar.
 
-No entity IDs, webhooks, tokens or YAML are required.
+That is the normal setup. No entity IDs, webhook addresses, tokens or YAML are required.
 
-### 2. Advanced: HealthLink Bridge protocol
+If only one compatible iPhone is detected, HealthLink binds it automatically. If several household iPhones expose Apple Health sensors, HealthLink asks which phone belongs to the profile instead of risking mixed health data.
 
-Some HealthKit object families are not currently exposed by the official Companion app. HealthLink therefore includes a signed, replay-protected Bridge protocol and iOS Bridge source scaffold for future full-catalog delivery.
+Newly enabled Apple Health sensors are discovered automatically without restarting Home Assistant. A periodic rescan remains only as a recovery fallback.
 
-**Important:** v0.1.0 does not ship an App Store/TestFlight HealthLink Bridge binary. End users do not need the Bridge for the normal Companion mode. Full HealthKit object coverage requires an Apple-platform transport because a Linux Home Assistant server cannot directly call Apple's HealthKit APIs. The preferred route is to add that transport to the official Home Assistant iOS app; a standalone Bridge is fallback only.
+## Current data source
+
+HealthLink can automatically use every `health_*` sensor exposed by the installed version of the official Home Assistant iOS Companion app. Known metrics receive HealthKit-aware names/domains/aggregation rules, while future Companion `health_*` metrics can still be discovered dynamically.
+
+The server-only HACS integration cannot independently read the private HealthKit database on an iPhone. Direct HealthKit access requires Apple platform APIs, the HealthKit entitlement and per-type user authorization on the Apple device. This is why the official Home Assistant iOS app is the preferred transport.
 
 ## HealthLink Studio
 
@@ -52,21 +57,21 @@ The integration adds a **HealthLink** sidebar panel with:
 
 - **Today** — steps, sleep, recovery context, confidence and sync status.
 - **Health data** — catalog/explorer with per-metric HA entity exposure.
-- **Timeline** — HealthKit + selected Home Assistant numeric entity changes.
+- **Timeline** — health + selected Home Assistant numeric entity changes.
 - **Create sensor** — no-code Health Composer.
 - **Insights** — correlation and observed preferred environmental ranges.
-- **Connection** — Companion/Bridge status and admin-only advanced pairing data.
+- **Connection** — Companion status and administrator-only advanced information.
 
 ## Privacy defaults
 
 HealthLink intentionally starts conservative:
 
 - sensitive entity exposure: **OFF**
-- self-optimizing environment control: **OFF**
-- HealthKit write-back: **OFF**
+- unfinished environment actuation: **not exposed in normal settings**
+- unfinished HealthKit write-back: **not exposed in normal settings**
 - health values in diagnostics: **never**
 - exports: private `/config/health_link_exports`, never `/config/www`
-- Bridge transport: HMAC-SHA256, timestamp/sequence validation
+- optional Bridge endpoint: **not registered in default Companion/auto mode**
 
 ## Install with HACS
 
@@ -101,7 +106,7 @@ The initial pack is intentionally small:
 - `binary_sensor.*_data_stale`
 - `binary_sensor.*_recovery_below_baseline`
 
-Additional raw HealthKit metrics are opt-in from **HealthLink → Health data**.
+Additional metrics can be exposed from **HealthLink → Health data** instead of flooding Home Assistant with hundreds of entities by default.
 
 ## Health Composer example
 
@@ -120,32 +125,17 @@ Studio can create definitions such as:
 
 Formulas are parsed through a restricted AST interpreter. `eval` and `exec` are never used.
 
-## Bridge envelope
+## Advanced/full HealthKit direction
 
-```json
-{
-  "schema_version": 1,
-  "profile_id": "p_...",
-  "bridge_id": "iphone_...",
-  "sequence": 42,
-  "sent_at": "2026-09-11T18:30:00+09:00",
-  "items": [
-    {
-      "object_kind": "quantity",
-      "type_id": "HKQuantityTypeIdentifierHeartRate",
-      "sample_uuid": "...",
-      "start": "...",
-      "end": "...",
-      "numeric_value": 72,
-      "unit": "count/min",
-      "domain": "heart",
-      "source": {"name": "Apple Watch"}
-    }
-  ]
-}
-```
+Quantity/category values that the official Companion app exposes work through the normal path above. Rich HealthKit objects such as raw ECG waveforms, heartbeat series, workout routes, structured workouts, audiograms, clinical/FHIR records and medication events need an Apple-side native transport if they are to be synchronized in full fidelity.
 
-Structured objects can additionally send `payload` / `structured_value`; HealthLink stores them outside HA entity attributes.
+HealthLink's implementation priority is:
+
+1. Extend the **official Home Assistant iOS app** where feasible.
+2. Reuse existing Companion Health sensors wherever sufficient.
+3. Use a standalone HealthLink iOS Bridge only as an optional fallback for capabilities that cannot reasonably live in the official Companion app.
+
+The HACS server integration contains the normalized storage/ingest model needed for these future structured objects, but does not claim that an App Store/TestFlight Bridge is currently shipped.
 
 ## Actions
 
@@ -164,28 +154,32 @@ Export and purge require administrator context when called by a user.
 
 ## HACS readiness
 
-Repository layout is prepared for HACS validation:
+Repository layout includes:
 
 - exactly one integration under `custom_components/`
 - `manifest.json` with `version`, `config_flow`, `integration_type`, `iot_class`
 - root `hacs.json`
-- `translations/en.json` and `translations/ko.json`
+- English and Korean translations
+- a local HealthLink brand icon
 - HACS Action
 - Hassfest Action
-- Python unit tests
-- no `strings.json` (custom integrations use `translations/` directly in current Home Assistant)
+- Python 3.14 tests against Home Assistant 2026.8 and 2026.9
+- frontend syntax validation
 
-HACS default inclusion still requires public GitHub hosting, repository description/topics/issues, brand assets accepted in `home-assistant/brands`, passing HACS/Hassfest checks without ignores, and a GitHub Release.
+For HACS default inclusion, the repository metadata must also contain a description and valid GitHub topics, all HACS/Hassfest checks must pass, and a GitHub Release must exist.
 
 ## Project documentation
 
 - Detailed product and implementation specification: [`docs/HealthLink_PRD_v1.0.md`](docs/HealthLink_PRD_v1.0.md)
 - Data-source and transport policy: [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md)
 - Shipped vs planned feature matrix: [`docs/STATUS.md`](docs/STATUS.md)
+- Changelog: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Development status
 
-`0.1.0` is the first HACS custom-repository-ready server integration implementation. The default Companion path, local store, baseline engine, Studio, Composer, timeline, observational insights, Bridge ingest protocol, privacy controls and diagnostics are implemented in this repository. Native full-HealthKit transport, automatic environment actuation and HealthKit write-back remain opt-in later phases and must not be represented as completed until they are shipped and tested on iOS.
+`0.1.1` hardens the first public HACS integration: the standard Companion path is simpler, frequent Health updates are batched, repeated equal-value samples can be retained, duplicate iPhone profiles are blocked, the optional Bridge endpoint is disabled by default, and CI targets the actual Python runtime required by current Home Assistant releases.
+
+Native full-HealthKit transport, automatic environment actuation and HealthKit write-back remain later phases and are not represented as completed until they are shipped and tested on iOS.
 
 ## License
 
