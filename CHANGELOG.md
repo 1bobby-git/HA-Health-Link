@@ -2,6 +2,24 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.1.2] - 2026-09-12
+
+### Changed
+- Reworked the repository README as a Korean-first user guide with the same simple installation structure used by the other `HA-*` integrations.
+- Added one-click **HACS repository** and **HealthLink Config Flow** buttons using My Home Assistant.
+- Applied the final user-approved HealthLink square icon and horizontal wordmark without redesigning the logo or typography.
+- Added repository-local branding assets under `assets/` and updated the integration-local brand icon.
+- Clarified the normal data path as Apple Health / HealthKit → official Home Assistant iOS Companion app → HealthLink.
+- Updated data-source and implementation-status documentation to match the current one-app user experience.
+
+### Removed
+- Removed the unused `ios/HealthLinkBridge` Swift development scaffold. The current HealthLink repository no longer ships or requires a separate HealthLink iOS app.
+- Removed temporary repository staging/probe files left from early development.
+
+### Scope
+- Full native HealthKit expansion continues to prefer upstream support in the official Home Assistant iOS app.
+- The existing server-side normalized ingest/storage model remains available for future structured transports without being exposed as a normal end-user setup requirement.
+
 ## [0.1.1] - 2026-09-11
 
 ### Changed
@@ -33,7 +51,7 @@ All notable changes to HealthLink are documented here.
 - HealthLink Studio sidebar panel with Today, Health data, Timeline, Create sensor, Insights and Connection views.
 - No-code Health Composer with restricted AST evaluation; no `eval`/`exec`.
 - HealthKit + Home Assistant timeline and observational correlation/preferred-range analysis.
-- Signed optional Bridge ingest protocol with timestamp, sequence and replay protection.
+- Signed optional server-side ingest protocol with timestamp, sequence and replay protection.
 - Opt-in entity exposure, sensitive-data guardrails, private export and redacted diagnostics.
 - Korean and English translations.
 - Example Home Assistant automation blueprints.
@@ -42,9 +60,8 @@ All notable changes to HealthLink are documented here.
 ### Privacy
 - HealthLink Studio and raw/structured health-data WebSocket APIs are administrator-only.
 - Sensitive health metrics are not exposed as Home Assistant entities unless explicitly enabled.
-- Diagnostic output excludes raw health values and Bridge secrets.
+- Diagnostic output excludes raw health values and secrets.
 
 ### Known scope
 - The normal user path works through the official Home Assistant iOS Companion app.
 - Full HealthKit object coverage requires an Apple-platform transport because Home Assistant Core cannot access HealthKit directly.
-- `0.1.0` contains the server-side universal protocol/store and an iOS source scaffold, but does not claim a production App Store/TestFlight Bridge binary.
