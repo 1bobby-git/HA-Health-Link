@@ -1,0 +1,21 @@
+{
+  "domain": "health_link",
+  "name": "HealthLink",
+  "codeowners": [
+    "@1bobby-git"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "frontend",
+    "http",
+    "panel_custom",
+    "webhook",
+    "recorder"
+  ],
+  "documentation": "https://github.com/1bobby-git/HA-Health-Link",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/1bobby-git/HA-Health-Link/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

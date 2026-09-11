@@ -1,0 +1,21 @@
+blueprint:
+  name: HealthLink — Health data sync stale alert
+  description: Notify when HealthLink health data has stopped updating. No fixed entity name is required.
+  domain: automation
+  input:
+    stale_sensor:
+      name: HealthLink stale sensor
+      selector:
+        entity:
+          domain: binary_sensor
+    notify_action:
+      name: Notification action
+      selector:
+        action:
+triggers:
+  - trigger: state
+    entity_id: !input stale_sensor
+    to: "on"
+    for: "01:00:00"
+actions: !input notify_action
+mode: single

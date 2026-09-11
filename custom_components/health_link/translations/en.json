@@ -1,0 +1,71 @@
+{
+  "title": "HealthLink",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up HealthLink",
+        "description": "No YAML or sensor IDs are required. HealthLink automatically discovers Apple Health sensors from the Home Assistant iPhone app. Detected iPhones: {device_count}. Full HealthKit expansion can be paired later from the HealthLink panel.",
+        "data": {
+          "profile_name": "Health profile name",
+          "companion_device_id": "My iPhone"
+        },
+        "data_description": {
+          "profile_name": "For example: My Health",
+          "companion_device_id": "When multiple iPhones exist, choose only the phone that belongs to this profile."
+        }
+      }
+    },
+    "error": {"profile_name_required": "Enter a profile name."},
+    "abort": {}
+  },
+  "options": {
+    "step": {
+      "general": {
+        "title": "General settings",
+        "description": "The defaults are recommended and most users do not need to change them.",
+        "data": {
+          "source_mode": "Data source mode",
+          "baseline_window": "Personal baseline window (days)",
+          "stale_hours": "Stale data warning (hours)",
+          "enable_composer": "Health Composer",
+          "enable_context": "Health + home context analysis",
+          "companion_device_id": "My iPhone"
+        }
+      },
+      "privacy": {
+        "title": "Privacy and advanced features",
+        "description": "Sensitive entity exposure, self-optimization and HealthKit write-back are off by default.",
+        "data": {
+          "raw_retention_days": "Raw data retention (days)",
+          "enable_sensitive": "Allow sensitive health metrics as HA entities",
+          "self_optimizing": "Allow experimental environment optimization",
+          "write_back": "Allow HealthKit write-back"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_sync": {"name": "Last sync"},
+      "sync_latency": {"name": "Sync latency"},
+      "data_confidence": {"name": "Data confidence"},
+      "steps_today": {"name": "Steps today"},
+      "active_energy_today": {"name": "Active energy today"},
+      "exercise_time_today": {"name": "Exercise time today"},
+      "last_sleep_duration": {"name": "Last sleep duration"},
+      "last_sleep_deep": {"name": "Last deep sleep"},
+      "last_sleep_rem": {"name": "Last REM sleep"},
+      "last_sleep_efficiency": {"name": "Last sleep efficiency"},
+      "recovery_context": {"name": "Recovery context"},
+      "recovery_confidence": {"name": "Recovery context confidence"},
+      "hrv_vs_baseline": {"name": "HRV vs personal baseline"},
+      "resting_hr_vs_baseline": {"name": "Resting heart rate vs personal baseline"},
+      "sleep_vs_baseline": {"name": "Sleep vs personal baseline"},
+      "activity_vs_baseline": {"name": "Activity vs personal baseline"}
+    },
+    "binary_sensor": {
+      "data_stale": {"name": "Health data stale"},
+      "recovery_below_baseline": {"name": "Recovery below baseline"}
+    }
+  }
+}

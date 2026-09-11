@@ -1,0 +1,106 @@
+recalculate:
+  name: Recalculate HealthLink
+  description: Recalculate HealthLink derived context values from the local store.
+  fields:
+    config_entry_id:
+      name: Profile
+      description: Optional HealthLink config entry. Only needed when multiple profiles exist.
+      selector:
+        config_entry:
+          integration: health_link
+refresh_baseline:
+  name: Refresh personal baseline
+  description: Recalculate personal baseline context from locally stored health data.
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: health_link
+sync_request:
+  name: Request HealthLink sync
+  description: Ask connected HealthLink clients to perform a sync when supported.
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: health_link
+backfill_request:
+  name: Request history backfill
+  description: Request historical data from a HealthLink Bridge when supported.
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: health_link
+    days:
+      required: true
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 3650
+          mode: box
+purge:
+  name: Purge old local health data
+  description: Permanently remove HealthLink samples older than the selected retention age.
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: health_link
+    days:
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 3650
+          mode: box
+enable_metric:
+  name: Expose metric as entity
+  description: Enable a HealthKit metric for Home Assistant entity creation.
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: health_link
+    type_id:
+      required: true
+      selector:
+        text:
+disable_metric:
+  name: Hide metric entity
+  description: Stop exposing a HealthKit metric as a Home Assistant entity. Raw local data is retained.
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: health_link
+    type_id:
+      required: true
+      selector:
+        text:
+export:
+  name: Export health data
+  description: Export selected HealthLink data into a private Home Assistant config folder, never /www.
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: health_link
+    format:
+      required: true
+      default: json
+      selector:
+        select:
+          options:
+            - json
+            - csv
+    type_id:
+      selector:
+        text:
+    start:
+      selector:
+        text:
+    end:
+      selector:
+        text:

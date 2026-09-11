@@ -1,0 +1,47 @@
+name: Bug report
+description: Report a HealthLink problem without posting private health data.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not upload HealthKit exports, ECG/clinical data, Bridge secrets, webhook URLs, medication names or screenshots containing private health values.
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: 2026.9.0
+    validations:
+      required: true
+  - type: input
+    id: healthlink_version
+    attributes:
+      label: HealthLink version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Data path
+      options:
+        - Home Assistant iOS Companion
+        - HealthLink Bridge
+        - Both
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Remove health values and secrets before posting.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true

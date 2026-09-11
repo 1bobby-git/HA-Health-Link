@@ -1,0 +1,29 @@
+blueprint:
+  name: HealthLink — Recovery-aware evening scene
+  description: Run a user-selected action when HealthLink says recovery is below the user's own baseline. This is a wellness context, not a medical judgement.
+  domain: automation
+  input:
+    recovery_sensor:
+      name: Recovery below baseline
+      selector:
+        entity:
+          domain: binary_sensor
+    start_time:
+      name: Earliest evening time
+      default: "18:00:00"
+      selector:
+        time:
+    evening_action:
+      name: Evening action
+      description: For example, activate a calmer light scene or adjust a comfort setting.
+      selector:
+        action:
+triggers:
+  - trigger: state
+    entity_id: !input recovery_sensor
+    to: "on"
+conditions:
+  - condition: time
+    after: !input start_time
+actions: !input evening_action
+mode: restart

@@ -26,5 +26,5 @@ All notable changes to HealthLink are documented here.
 
 ### Known scope
 - The normal user path works through the official Home Assistant iOS Companion app.
-- Full HealthKit object coverage requires an Apple-platform transport because Home Assistant Core cannot access HealthKit directly.
-- Preferred full-catalog direction: extend the official Home Assistant iOS app; standalone HealthLink Bridge remains an advanced fallback.
+- Full HealthKit object coverage requires a native iOS Bridge because Home Assistant Core cannot access HealthKit directly.
+- `0.1.0` contains the server-side universal protocol/store and an iOS source scaffold, but does not claim a production App Store/TestFlight Bridge binary.

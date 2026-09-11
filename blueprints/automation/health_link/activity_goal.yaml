@@ -1,0 +1,28 @@
+blueprint:
+  name: HealthLink — Activity goal notification
+  description: Run an action once daily when today's HealthLink activity sensor reaches a chosen target.
+  domain: automation
+  input:
+    activity_sensor:
+      name: Activity sensor
+      selector:
+        entity:
+          domain: sensor
+    target:
+      name: Goal
+      default: 10000
+      selector:
+        number:
+          min: 1
+          max: 100000
+          mode: box
+    goal_action:
+      name: Goal reached action
+      selector:
+        action:
+triggers:
+  - trigger: numeric_state
+    entity_id: !input activity_sensor
+    above: !input target
+actions: !input goal_action
+mode: single
