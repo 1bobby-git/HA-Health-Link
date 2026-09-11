@@ -43,6 +43,9 @@
           "enable_sensitive": "민감 건강 항목을 HA 센서로 노출 허용"
         }
       }
+    },
+    "error": {
+      "device_already_used": "이 iPhone은 이미 다른 HealthLink 건강 프로필에 연결되어 있습니다."
     }
   },
   "entity": {
