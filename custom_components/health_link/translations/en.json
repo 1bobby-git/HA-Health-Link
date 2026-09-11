@@ -43,6 +43,9 @@
           "enable_sensitive": "Allow sensitive health metrics as HA entities"
         }
       }
+    },
+    "error": {
+      "device_already_used": "This iPhone already belongs to another HealthLink profile."
     }
   },
   "entity": {
