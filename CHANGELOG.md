@@ -2,6 +2,26 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.1.1] - 2026-09-11
+
+### Changed
+- Made the official Home Assistant iOS Companion app the clear default and no-extra-app path.
+- Simplified Config Flow and Options Flow so ordinary users are not shown unfinished Bridge, write-back or self-optimization controls.
+- Prevented duplicate profiles from importing the same Companion iPhone when the device is already configured.
+- Batched frequent Companion health updates before writing to SQLite and refreshing Home Assistant entities, reducing unnecessary database/coordinator work.
+- Coalesced entity-registry discovery bursts while keeping newly enabled Apple Health sensors discoverable without a Home Assistant restart.
+- Preserved repeated health measurements with the same value by also handling state-reported events and using the report timestamp when available.
+- Added a local HACS brand icon.
+- Updated CI to Python 3.14 and Home Assistant 2026.8.0 / 2026.9.1 compatibility runs.
+
+### Security / privacy
+- The optional HealthLink Bridge webhook is no longer registered in the default Companion/auto mode. It is exposed only for an explicitly configured Bridge mode.
+- Unfinished HealthKit write-back and self-optimizing environment controls remain disabled and are no longer presented as usable end-user options.
+
+### Fixed
+- Fixed the previous CI environment mismatch where Home Assistant 2026.8+ was tested on Python 3.13 even though current HA packages require Python 3.14.2 or newer.
+- Fixed pytest invocation so repository-local `custom_components` imports resolve consistently on GitHub Actions.
+
 ## [0.1.0] - 2026-09-11
 
 ### Added
@@ -26,5 +46,5 @@ All notable changes to HealthLink are documented here.
 
 ### Known scope
 - The normal user path works through the official Home Assistant iOS Companion app.
-- Full HealthKit object coverage requires a native iOS Bridge because Home Assistant Core cannot access HealthKit directly.
+- Full HealthKit object coverage requires an Apple-platform transport because Home Assistant Core cannot access HealthKit directly.
 - `0.1.0` contains the server-side universal protocol/store and an iOS source scaffold, but does not claim a production App Store/TestFlight Bridge binary.
