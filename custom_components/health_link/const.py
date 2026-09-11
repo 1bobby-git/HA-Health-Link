@@ -2,7 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final
-DOMAIN:Final="health_link";NAME:Final="HealthLink";VERSION:Final="0.1.1";PLATFORMS:Final=["sensor","binary_sensor"]
+DOMAIN:Final="health_link";NAME:Final="HealthLink";VERSION:Final="0.1.2";PLATFORMS:Final=["sensor","binary_sensor"]
 CONF_PROFILE_NAME:Final="profile_name";CONF_COMPANION_DEVICE_ID:Final="companion_device_id";CONF_SOURCE_MODE:Final="source_mode";CONF_ENABLE_SENSITIVE:Final="enable_sensitive";CONF_RAW_RETENTION_DAYS:Final="raw_retention_days";CONF_BASELINE_WINDOW:Final="baseline_window";CONF_STALE_HOURS:Final="stale_hours";CONF_ENABLE_COMPOSER:Final="enable_composer";CONF_ENABLE_CONTEXT:Final="enable_context";CONF_SELF_OPTIMIZING:Final="self_optimizing";CONF_WRITE_BACK:Final="write_back";CONF_WEBHOOK_ID:Final="webhook_id";CONF_BRIDGE_SECRET:Final="bridge_secret";CONF_PROFILE_ID:Final="profile_id"
 DEFAULT_SOURCE_MODE:Final="auto";DEFAULT_RAW_RETENTION_DAYS:Final=365;DEFAULT_BASELINE_WINDOW:Final=28;DEFAULT_STALE_HOURS:Final=24;DEFAULT_ENABLE_SENSITIVE:Final=False;DEFAULT_ENABLE_COMPOSER:Final=True;DEFAULT_ENABLE_CONTEXT:Final=True;DEFAULT_SELF_OPTIMIZING:Final=False;DEFAULT_WRITE_BACK:Final=False
 SOURCE_MODES:Final=("auto","companion","bridge","both");SENSITIVE_DOMAINS:Final={"clinical","medication","reproductive","state_of_mind","assessment"}
