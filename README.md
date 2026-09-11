@@ -1,91 +1,190 @@
+<p align="center">
+  <img src="assets/healthlink-logo-wide.png" alt="HealthLink 로고" width="700">
+</p>
+
+<p align="center">
+  <a href="https://github.com/1bobby-git/HA-Health-Link/stargazers"><img src="https://img.shields.io/github/stars/1bobby-git/HA-Health-Link?style=flat-square&logo=github&label=Stars" alt="GitHub Stars"></a>
+  <a href="https://github.com/1bobby-git/HA-Health-Link/releases"><img src="https://img.shields.io/github/v/release/1bobby-git/HA-Health-Link?style=flat-square&label=Release" alt="Latest Release"></a>
+  <a href="https://github.com/1bobby-git/HA-Health-Link/blob/main/LICENSE"><img src="https://img.shields.io/github/license/1bobby-git/HA-Health-Link?style=flat-square&label=License" alt="License"></a>
+  <a href="https://github.com/1bobby-git/HA-Health-Link/commits/main"><img src="https://img.shields.io/github/last-commit/1bobby-git/HA-Health-Link?style=flat-square&label=Updated" alt="Last Commit"></a>
+</p>
+
 # HealthLink
 
-**Apple Health & HealthKit × Home Assistant — local-first health context platform.**
+**Apple 건강(HealthKit) 데이터와 Home Assistant의 집·환경 데이터를 연결하는 로컬 우선 건강 컨텍스트 통합입니다.**
 
-HealthLink does not stop at copying health values into Home Assistant. It connects body data with home data so users can create personal baselines, combine HealthKit and HA entities, inspect a shared timeline, discover observed relationships, and build automations around context instead of fixed medical thresholds.
+HealthLink는 건강 데이터를 Home Assistant에 단순 복사하는 데서 끝나지 않습니다. 개인 기준선, 건강+집 타임라인, Health Composer, 관측형 인사이트를 이용해 **내 몸의 변화와 집 환경의 관계를 이해하고 자동화에 활용**할 수 있게 합니다.
 
-> HealthLink is a wellness/context integration, not a medical device and not a diagnostic system.
+> HealthLink는 웰니스/컨텍스트 분석용 통합이며 의료기기, 진단 시스템, 치료 판단 도구가 아닙니다.
 
-## Why HealthLink?
+---
 
-- **No YAML required.** The default setup automatically discovers Apple Health sensors already exposed by the official Home Assistant iOS Companion app.
-- **No extra iPhone app for normal use.** The standard path uses the official Home Assistant iOS app users already have.
-- **Health Composer.** Build a new HA sensor from a HealthKit metric plus another HealthKit or Home Assistant entity without writing code.
-- **Personal baseline.** Compare HRV, resting heart rate, sleep and activity against the user's own recent history instead of a universal threshold.
-- **Health + Home timeline.** Place health samples and home/environment states on the same time axis.
-- **Context Insights.** Inspect observational correlations such as deep sleep vs bedroom CO₂ or HRV vs room temperature. HealthLink explicitly does not claim causation.
-- **Recorder protection.** Raw health samples live in a private HealthLink SQLite store; only selected metrics become HA entities.
-- **Local-first privacy.** No cloud relay, telemetry or external analytics service is required.
-- **Private by default.** HealthLink Studio and raw health-data APIs are administrator-only; sensitive entity exposure is opt-in.
-- **Efficient Companion ingestion.** Frequent Apple Health updates are batched before database/entity refreshes, and repeated equal values are preserved when Home Assistant reports them as new samples.
+## 왜 HealthLink가 필요한가요?
 
-## What HealthLink actually is
+- **별도 iPhone 앱 불필요**: 기본 사용은 공식 Home Assistant iOS Companion 앱만 사용합니다.
+- **YAML 불필요**: Apple 건강 센서를 자동 탐색합니다.
+- **개인 기준선**: HRV, 안정 심박, 수면, 활동을 고정 임계값이 아니라 사용자의 최근 7/28/90/365일 패턴과 비교합니다.
+- **Health Composer**: HealthKit 데이터와 임의의 Home Assistant 엔티티를 조합해 새 센서를 만들 수 있습니다.
+- **건강 + 집 타임라인**: 수면·심박·활동과 온도·습도·CO₂·조명 같은 집 상태를 같은 시간축에서 확인합니다.
+- **관측형 인사이트**: 예를 들어 깊은 수면과 침실 CO₂, HRV와 실내 온도의 관계를 분석합니다. 인과관계로 단정하지 않습니다.
+- **Recorder 보호**: 원본 건강 데이터는 HealthLink 전용 로컬 SQLite/WAL 저장소에 보관하고 필요한 값만 HA 엔티티로 노출합니다.
+- **로컬 우선 개인정보 보호**: 외부 분석 서버나 클라우드 중계가 필요하지 않습니다.
+- **민감정보 기본 비공개**: 민감 건강 항목은 사용자가 직접 허용하기 전까지 일반 HA 센서로 노출하지 않습니다.
 
-**HealthLink is a Home Assistant HACS integration.** The standard mode does **not** require a separate HealthLink iOS app.
+---
 
-The normal data path is:
+## 데이터는 어디서 가져오나요?
 
-**Apple Health / HealthKit → official Home Assistant iPhone app → HA `mobile_app` health sensors → HealthLink**
+기본 경로는 다음과 같습니다.
 
-HealthLink then stores, combines and analyzes the data locally in Home Assistant.
+```text
+Apple Watch / iPhone / Apple 건강 앱
+                ↓
+             HealthKit
+                ↓
+공식 Home Assistant iOS Companion 앱
+                ↓
+Home Assistant mobile_app 건강 센서
+                ↓
+             HealthLink
+                ↓
+개인 기준선 / Composer / 타임라인 / 인사이트 / 자동화
+```
 
-For HealthKit object families the official Companion app does not expose yet, HealthLink retains a server-side normalized transport protocol for future expansion. The preferred long-term implementation is to contribute broader HealthKit support to the official Home Assistant iOS app. A standalone HealthLink iOS Bridge remains an advanced fallback, not a normal installation requirement. See [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md).
+Home Assistant Core는 일반적으로 Linux에서 실행되기 때문에 iPhone의 HealthKit DB를 직접 열 수 없습니다. 따라서 HealthKit 권한이 있는 **공식 Home Assistant iOS 앱을 전송 경로로 사용**합니다.
 
-## Easiest setup
+HealthLink는 현재 Companion 앱이 노출하는 `health_*` 센서를 자동으로 찾으며, 앞으로 공식 앱에 새로운 건강 센서가 추가되어도 동적으로 탐색할 수 있도록 설계되어 있습니다.
 
-1. Install **HealthLink** from HACS.
-2. Add **HealthLink** in **Settings → Devices & services**.
-3. On iPhone open **Home Assistant → Settings → Sensors → Apple Health Sensors**.
-4. Enable the Apple Health sensors you want.
-5. Open **HealthLink** from the Home Assistant sidebar.
+---
 
-That is the normal setup. No entity IDs, webhook addresses, tokens or YAML are required.
+# 설치 방법
 
-If only one compatible iPhone is detected, HealthLink binds it automatically. If several household iPhones expose Apple Health sensors, HealthLink asks which phone belongs to the profile instead of risking mixed health data.
+## 1. HACS로 설치 — 권장
 
-Newly enabled Apple Health sensors are discovered automatically without restarting Home Assistant. A periodic rescan remains only as a recovery fallback.
+아래 버튼을 누르면 Home Assistant에서 HealthLink HACS 저장소를 바로 열 수 있습니다.
 
-## Current data source
+[![Open your Home Assistant instance and show the HACS repository.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=1bobby-git&repository=HA-Health-Link&category=integration)
 
-HealthLink can automatically use every `health_*` sensor exposed by the installed version of the official Home Assistant iOS Companion app. Known metrics receive HealthKit-aware names/domains/aggregation rules, while future Companion `health_*` metrics can still be discovered dynamically.
+버튼을 사용할 수 없는 경우 수동으로 HACS에 추가합니다.
 
-The server-only HACS integration cannot independently read the private HealthKit database on an iPhone. Direct HealthKit access requires Apple platform APIs, the HealthKit entitlement and per-type user authorization on the Apple device. This is why the official Home Assistant iOS app is the preferred transport.
+1. **HACS → Integrations** 이동
+2. 우측 상단 메뉴 → **Custom repositories**
+3. Repository에 `https://github.com/1bobby-git/HA-Health-Link` 입력
+4. Category는 **Integration** 선택
+5. **HealthLink** 설치
+6. Home Assistant 재시작
+
+## 2. 통합 추가
+
+재시작 후 아래 버튼으로 HealthLink 설정을 바로 시작할 수 있습니다.
+
+[![Open your Home Assistant instance and start setting up the integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=health_link)
+
+또는 다음 경로를 이용합니다.
+
+**설정 → 기기 및 서비스 → 통합 추가 → HealthLink**
+
+## 3. iPhone에서 Apple 건강 센서 활성화
+
+1. iPhone에서 **Home Assistant 앱** 실행
+2. **설정 → 센서 → Apple 건강 센서** 이동
+3. 사용할 건강 센서 활성화
+4. `모든 센서를 활성화하기`가 보이면 한 번에 활성화 가능
+5. Home Assistant의 **HealthLink** 화면 확인
+
+한 대의 iPhone만 감지되면 자동으로 연결합니다. 여러 대의 iPhone이 있으면 가족의 건강 데이터가 섞이지 않도록 **본인의 iPhone을 한 번만 선택**합니다.
+
+새로 활성화한 건강 센서는 Home Assistant 재시작 없이 자동 탐색합니다.
+
+## 4. 수동 설치
+
+HACS를 사용하지 않는 경우 저장소의 `custom_components/health_link` 폴더를 아래 위치로 복사합니다.
+
+```text
+/config/custom_components/health_link
+```
+
+복사 후 Home Assistant를 재시작하고 **설정 → 기기 및 서비스 → 통합 추가 → HealthLink**를 선택합니다.
+
+---
+
+## 주요 기능
+
+### 개인 기준선
+
+사용자의 과거 데이터를 기준으로 현재 상태를 비교합니다.
+
+예:
+
+```text
+HRV      평소 대비 -18%
+안정심박 평소 대비 +9%
+수면     평소 대비 -14%
+
+→ 회복 컨텍스트: 평소보다 낮음
+```
+
+고정된 의학 임계값이 아니라 **개인의 평소 패턴 대비 변화**를 보여줍니다.
+
+### Health Composer
+
+HealthKit 데이터와 Home Assistant 엔티티를 조합해 사용자가 새로운 센서를 만들 수 있습니다.
+
+예:
+
+```text
+HRV + 깊은 수면 + 침실 CO₂ + 침실 온도
+                    ↓
+          사용자 정의 회복/환경 센서
+```
+
+수식은 제한된 안전 파서를 사용하며 `eval`/`exec`를 사용하지 않습니다.
+
+### 건강 + 집 타임라인
+
+예를 들어 다음 흐름을 같은 시간축에서 확인할 수 있습니다.
+
+```text
+23:18 수면 시작
+01:42 침실 CO₂ 1,180 ppm
+01:55 각성 증가
+02:03 환기 시작
+02:21 CO₂ 760 ppm
+```
+
+### 인사이트
+
+HealthLink는 장기간 데이터를 이용해 관측 가능한 관계를 계산합니다.
+
+예:
+
+- 침실 CO₂와 깊은 수면
+- 실내 온도와 HRV
+- 운동량과 다음 날 회복 컨텍스트
+- 습도와 수면 결과
+
+분석 결과는 **관측된 연관성**으로만 표시하며 의학적 인과관계로 표현하지 않습니다.
+
+---
 
 ## HealthLink Studio
 
-The integration adds a **HealthLink** sidebar panel with:
+Home Assistant 사이드바에 **HealthLink** 화면이 추가됩니다.
 
-- **Today** — steps, sleep, recovery context, confidence and sync status.
-- **Health data** — catalog/explorer with per-metric HA entity exposure.
-- **Timeline** — health + selected Home Assistant numeric entity changes.
-- **Create sensor** — no-code Health Composer.
-- **Insights** — correlation and observed preferred environmental ranges.
-- **Connection** — Companion status and administrator-only advanced information.
+| 화면 | 기능 |
+|---|---|
+| 오늘 | 걸음, 수면, 회복 컨텍스트, 신뢰도, 동기화 상태 |
+| 건강 데이터 | 실제 수집된 건강 항목 탐색 및 HA 센서 노출 설정 |
+| 타임라인 | 건강 데이터와 HA 환경 센서의 시간축 비교 |
+| 센서 만들기 | Health Composer로 사용자 센서 생성 |
+| 인사이트 | 상관관계 및 관측상 유리한 환경 범위 분석 |
+| 연결 상태 | Companion 연결 및 데이터 상태 확인 |
 
-## Privacy defaults
+---
 
-HealthLink intentionally starts conservative:
+## 기본 생성 센서
 
-- sensitive entity exposure: **OFF**
-- unfinished environment actuation: **not exposed in normal settings**
-- unfinished HealthKit write-back: **not exposed in normal settings**
-- health values in diagnostics: **never**
-- exports: private `/config/health_link_exports`, never `/config/www`
-- optional Bridge endpoint: **not registered in default Companion/auto mode**
-
-## Install with HACS
-
-Until HealthLink is accepted into HACS defaults, add it as a custom repository:
-
-1. HACS → Integrations → menu → **Custom repositories**
-2. Repository: `https://github.com/1bobby-git/HA-Health-Link`
-3. Category: **Integration**
-4. Install **HealthLink** and restart Home Assistant.
-5. Settings → Devices & services → Add integration → **HealthLink**.
-
-## Default entities
-
-The initial pack is intentionally small:
+초기에는 불필요한 엔티티 폭증을 막기 위해 대표 센서만 생성합니다.
 
 - `sensor.*_last_sync`
 - `sensor.*_sync_latency`
@@ -106,81 +205,72 @@ The initial pack is intentionally small:
 - `binary_sensor.*_data_stale`
 - `binary_sensor.*_recovery_below_baseline`
 
-Additional metrics can be exposed from **HealthLink → Health data** instead of flooding Home Assistant with hundreds of entities by default.
+추가 건강 항목은 **HealthLink → 건강 데이터**에서 필요한 항목만 선택해 HA 센서로 노출할 수 있습니다.
 
-## Health Composer example
+---
 
-Studio can create definitions such as:
+## 개인정보 보호
 
-```json
-{
-  "formula": "(a+b)/2",
-  "inputs": {
-    "a": {"source": "healthkit", "type_id": "HKQuantityTypeIdentifierHeartRateVariabilitySDNN"},
-    "b": {"source": "ha", "entity_id": "sensor.bedroom_temperature"}
-  },
-  "unit": "score"
-}
-```
+HealthLink는 건강 데이터 특성상 기본 설정을 보수적으로 구성합니다.
 
-Formulas are parsed through a restricted AST interpreter. `eval` and `exec` are never used.
+- 외부 클라우드 분석: **사용하지 않음**
+- 민감 건강 항목 엔티티 노출: **기본 OFF**
+- 원본 건강 데이터: HealthLink 전용 로컬 저장소
+- Diagnostics에 원본 건강 수치 포함: **안 함**
+- Bridge Webhook: 기본 Companion 모드에서는 **등록하지 않음**
+- 자동 환경 제어: 아직 일반 설정에 노출하지 않음
+- HealthKit 쓰기: 아직 일반 설정에 노출하지 않음
 
-## Advanced/full HealthKit direction
+혈압, 혈당, SpO₂ 등 건강 수치는 표시·추세 확인에 사용할 수 있지만 약물 투여나 응급 판단 같은 안전 필수 자동화를 목적으로 설계하지 않습니다.
 
-Quantity/category values that the official Companion app exposes work through the normal path above. Rich HealthKit objects such as raw ECG waveforms, heartbeat series, workout routes, structured workouts, audiograms, clinical/FHIR records and medication events need an Apple-side native transport if they are to be synchronized in full fidelity.
+---
 
-HealthLink's implementation priority is:
+## 지원 범위와 한계
 
-1. Extend the **official Home Assistant iOS app** where feasible.
-2. Reuse existing Companion Health sensors wherever sufficient.
-3. Use a standalone HealthLink iOS Bridge only as an optional fallback for capabilities that cannot reasonably live in the official Companion app.
+HealthLink가 기본적으로 사용할 수 있는 범위는 **설치된 공식 Home Assistant iOS Companion 앱이 HealthKit에서 노출하는 데이터**입니다.
 
-The HACS server integration contains the normalized storage/ingest model needed for these future structured objects, but does not claim that an App Store/TestFlight Bridge is currently shipped.
+현재 서버측 저장 구조는 향후 Workout, Route, ECG, Heartbeat Series 등 구조화 HealthKit 객체를 수용할 수 있게 설계되어 있지만, Linux의 HACS 통합만으로 iPhone HealthKit 전체를 직접 읽을 수는 없습니다.
 
-## Actions
+전체 HealthKit 범위 확대는 별도 HealthLink iOS 앱을 사용자에게 요구하는 대신 **공식 Home Assistant iOS 앱 지원 확대를 우선**합니다. 이전 개발용 `ios/HealthLinkBridge` 스캐폴드는 일반 사용자에게 필요하지 않고 제품 방향과 맞지 않아 저장소에서 제거했습니다.
 
-HealthLink registers:
+---
 
-- `health_link.recalculate`
-- `health_link.refresh_baseline`
-- `health_link.sync_request`
-- `health_link.backfill_request`
-- `health_link.enable_metric`
-- `health_link.disable_metric`
-- `health_link.export`
-- `health_link.purge`
+## 문제 해결
 
-Export and purge require administrator context when called by a user.
+### HealthLink에 데이터가 보이지 않을 때
 
-## HACS readiness
+1. iPhone Home Assistant 앱에서 Apple 건강 센서가 활성화되어 있는지 확인
+2. Apple 건강 앱에서 Home Assistant의 HealthKit 읽기 권한 확인
+3. Home Assistant의 `mobile_app` 통합이 정상인지 확인
+4. HealthLink 화면에서 **다시 확인** 실행
 
-Repository layout includes:
+### 여러 iPhone이 있을 때
 
-- exactly one integration under `custom_components/`
-- `manifest.json` with `version`, `config_flow`, `integration_type`, `iot_class`
-- root `hacs.json`
-- English and Korean translations
-- a local HealthLink brand icon
-- HACS Action
-- Hassfest Action
-- Python 3.14 tests against Home Assistant 2026.8 and 2026.9
-- frontend syntax validation
+HealthLink 설정에서 본인의 iPhone을 선택합니다. 잘못된 건강 데이터 혼합을 막기 위해 여러 기기가 감지되면 자동 선택하지 않습니다.
 
-For HACS default inclusion, the repository metadata must also contain a description and valid GitHub topics, all HACS/Hassfest checks must pass, and a GitHub Release must exist.
+### 새 센서를 켰는데 바로 보이지 않을 때
 
-## Project documentation
+대부분 즉시 탐색되며, 복구용 주기 재검색도 수행됩니다. Home Assistant 앱에서 센서 값이 실제로 생성되었는지도 확인하세요.
 
-- Detailed product and implementation specification: [`docs/HealthLink_PRD_v1.0.md`](docs/HealthLink_PRD_v1.0.md)
-- Data-source and transport policy: [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md)
-- Shipped vs planned feature matrix: [`docs/STATUS.md`](docs/STATUS.md)
-- Changelog: [`CHANGELOG.md`](CHANGELOG.md)
+---
 
-## Development status
+## 업데이트
 
-`0.1.1` hardens the first public HACS integration: the standard Companion path is simpler, frequent Health updates are batched, repeated equal-value samples can be retained, duplicate iPhone profiles are blocked, the optional Bridge endpoint is disabled by default, and CI targets the actual Python runtime required by current Home Assistant releases.
+HACS에서 새 버전이 표시되면 **Update** 후 Home Assistant를 재시작합니다.
 
-Native full-HealthKit transport, automatic environment actuation and HealthKit write-back remain later phases and are not represented as completed until they are shipped and tested on iOS.
+현재 버전: **v0.1.2**
 
-## License
+---
 
-MIT
+## 프로젝트 문서
+
+- [최종 PRD](docs/HealthLink_PRD_v1.0.md)
+- [데이터 소스 및 전송 정책](docs/DATA_SOURCES.md)
+- [구현 상태](docs/STATUS.md)
+- [변경 이력](CHANGELOG.md)
+
+---
+
+## 라이선스
+
+MIT License
