@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Set up HealthLink",
-        "description": "No YAML or sensor IDs are required. HealthLink automatically discovers Apple Health sensors from the Home Assistant iPhone app. Detected iPhones: {device_count}. Full HealthKit expansion can be paired later from the HealthLink panel.",
+        "description": "No YAML, webhook URL, token or sensor IDs are required. HealthLink automatically discovers Apple Health sensors from the official Home Assistant iPhone app. Detected iPhones: {device_count}.",
         "data": {
           "profile_name": "Health profile name",
           "companion_device_id": "My iPhone"
@@ -15,16 +15,19 @@
         }
       }
     },
-    "error": {"profile_name_required": "Enter a profile name."},
-    "abort": {}
+    "error": {
+      "profile_name_required": "Enter a profile name."
+    },
+    "abort": {
+      "already_configured": "This iPhone is already connected to HealthLink."
+    }
   },
   "options": {
     "step": {
       "general": {
         "title": "General settings",
-        "description": "The defaults are recommended and most users do not need to change them.",
+        "description": "The defaults are recommended. HealthLink uses your official Home Assistant iPhone app automatically; most users only need to choose how much history to use for personal baselines.",
         "data": {
-          "source_mode": "Data source mode",
           "baseline_window": "Personal baseline window (days)",
           "stale_hours": "Stale data warning (hours)",
           "enable_composer": "Health Composer",
@@ -33,15 +36,16 @@
         }
       },
       "privacy": {
-        "title": "Privacy and advanced features",
-        "description": "Sensitive entity exposure, self-optimization and HealthKit write-back are off by default.",
+        "title": "Privacy",
+        "description": "HealthLink stays local. Sensitive health metrics are not exposed as normal Home Assistant entities unless you explicitly allow them.",
         "data": {
           "raw_retention_days": "Raw data retention (days)",
-          "enable_sensitive": "Allow sensitive health metrics as HA entities",
-          "self_optimizing": "Allow experimental environment optimization",
-          "write_back": "Allow HealthKit write-back"
+          "enable_sensitive": "Allow sensitive health metrics as HA entities"
         }
       }
+    },
+    "error": {
+      "device_already_used": "This iPhone already belongs to another HealthLink profile."
     }
   },
   "entity": {

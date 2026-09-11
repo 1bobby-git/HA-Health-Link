@@ -47,6 +47,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 
 async def _async_setup_frontend(hass: HomeAssistant) -> None:
+    """Register HealthLink Studio once."""
     domain_data = hass.data.setdefault(DOMAIN, {})
     if not domain_data.get(_DATA_STATIC_READY):
         static_dir = Path(__file__).parent / "frontend"
@@ -81,15 +82,35 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         display_name=profile_name,
         timezone_name=hass.config.time_zone,
     )
+
     coordinator = HealthLinkCoordinator(hass, store, entry)
-    runtime = HealthLinkRuntimeData(store=store, coordinator=coordinator, webhook_id=entry.data[CONF_WEBHOOK_ID])
+    runtime = HealthLinkRuntimeData(
+        store=store,
+        coordinator=coordinator,
+        webhook_id=entry.data[CONF_WEBHOOK_ID],
+    )
     entry.runtime_data = runtime
-    async_register_bridge_webhook(hass, entry)
+
     source_mode = entry.options.get(CONF_SOURCE_MODE, DEFAULT_SOURCE_MODE)
+
+    # The normal user path is the official Home Assistant Companion app. Do not
+    # expose an internet-reachable Bridge endpoint unless Bridge mode was
+    # explicitly selected by an existing advanced configuration.
+    if source_mode in {"bridge", "both"}:
+        async_register_bridge_webhook(hass, entry)
+
     if source_mode in {"auto", "companion", "both"}:
-        importer = CompanionImporter(hass, runtime, entry.options.get(CONF_COMPANION_DEVICE_ID, entry.data.get(CONF_COMPANION_DEVICE_ID)))
+        importer = CompanionImporter(
+            hass,
+            runtime,
+            entry.options.get(
+                CONF_COMPANION_DEVICE_ID,
+                entry.data.get(CONF_COMPANION_DEVICE_ID),
+            ),
+        )
         runtime.companion = importer
         await importer.async_start()
+
     await coordinator.async_config_entry_first_refresh()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await _async_setup_frontend(hass)
@@ -98,15 +119,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a HealthLink health profile."""
     runtime: HealthLinkRuntimeData = entry.runtime_data
     if runtime.companion is not None:
         await runtime.companion.async_stop()
+
+    # Unregister is intentionally unconditional. It is safe when not present and
+    # guarantees that changing away from Bridge mode cannot leave an old endpoint.
     async_unregister_bridge_webhook(hass, entry)
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         for unsub in runtime.unload_callbacks:
             unsub()
-        remaining = [other for other in hass.config_entries.async_entries(DOMAIN) if other.entry_id != entry.entry_id and getattr(other, "runtime_data", None)]
+        remaining = [
+            other
+            for other in hass.config_entries.async_entries(DOMAIN)
+            if other.entry_id != entry.entry_id
+            and getattr(other, "runtime_data", None)
+        ]
         if not remaining:
             frontend.async_remove_panel(hass, _PANEL_PATH, warn_if_unknown=False)
             hass.data.get(DOMAIN, {}).pop(_DATA_PANEL_READY, None)
@@ -114,6 +144,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate older HealthLink config entries."""
     if entry.version > 1:
         return False
     return True
