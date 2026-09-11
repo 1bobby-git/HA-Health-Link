@@ -2,6 +2,16 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.1.3] - 2026-09-12
+
+### Fixed
+- Fixed Home Assistant setup failure caused by subscribing to `EVENT_STATE_REPORTED` without the event filter required by current Home Assistant Core.
+- Added a callback filter that limits `state_reported` processing to Apple Health entities already mapped to the active HealthLink profile, preserving repeated equal-value health samples without listening to unrelated state reports.
+
+### Branding
+- Added `custom_components/health_link/brand/logo.png` so Home Assistant 2026.3+ can serve the approved HealthLink horizontal logo through the local Brands Proxy API.
+- Kept the approved square HealthLink icon as the local integration icon. Local custom-integration brand assets take precedence over the legacy Home Assistant brands CDN entry.
+
 ## [0.1.2] - 2026-09-12
 
 ### Changed
