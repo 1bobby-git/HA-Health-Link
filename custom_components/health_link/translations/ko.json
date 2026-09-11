@@ -4,25 +4,44 @@
     "step": {
       "user": {
         "title": "HealthLink 시작하기",
-        "description": "YAML이나 센서 ID 입력은 필요 없습니다. Home Assistant iPhone 앱의 Apple 건강 센서를 자동으로 찾습니다. 감지된 iPhone: {device_count}개. 전체 HealthKit 확장은 설치 후 HealthLink 화면에서 선택적으로 연결할 수 있습니다.",
-        "data": {"profile_name": "건강 프로필 이름", "companion_device_id": "내 iPhone"},
-        "data_description": {"profile_name": "예: 내 건강, 원바비", "companion_device_id": "여러 iPhone이 있을 때 본인의 기기만 선택합니다."}
+        "description": "YAML, Webhook 주소, 토큰, 센서 ID 입력은 필요 없습니다. 공식 Home Assistant iPhone 앱의 Apple 건강 센서를 자동으로 찾습니다. 감지된 iPhone: {device_count}개.",
+        "data": {
+          "profile_name": "건강 프로필 이름",
+          "companion_device_id": "내 iPhone"
+        },
+        "data_description": {
+          "profile_name": "예: 내 건강, 원바비",
+          "companion_device_id": "여러 iPhone이 있을 때 본인의 기기만 선택합니다."
+        }
       }
     },
-    "error": {"profile_name_required": "프로필 이름을 입력하세요."},
-    "abort": {}
+    "error": {
+      "profile_name_required": "프로필 이름을 입력하세요."
+    },
+    "abort": {
+      "already_configured": "이 iPhone은 이미 HealthLink에 연결되어 있습니다."
+    }
   },
   "options": {
     "step": {
       "general": {
         "title": "일반 설정",
-        "description": "기본값을 그대로 사용해도 됩니다. 대부분의 사용자는 변경할 필요가 없습니다.",
-        "data": {"source_mode": "데이터 연결 방식", "baseline_window": "개인 기준선 기간(일)", "stale_hours": "데이터 지연 경고(시간)", "enable_composer": "센서 만들기(Health Composer)", "enable_context": "건강·집 컨텍스트 분석", "companion_device_id": "내 iPhone"}
+        "description": "기본값을 그대로 사용하는 것을 권장합니다. 공식 Home Assistant iPhone 앱은 자동으로 연결되며, 대부분의 사용자는 개인 기준선 기간만 필요에 따라 조정하면 됩니다.",
+        "data": {
+          "baseline_window": "개인 기준선 기간(일)",
+          "stale_hours": "데이터 지연 경고(시간)",
+          "enable_composer": "센서 만들기(Health Composer)",
+          "enable_context": "건강·집 컨텍스트 분석",
+          "companion_device_id": "내 iPhone"
+        }
       },
       "privacy": {
-        "title": "개인정보 및 고급 기능",
-        "description": "민감 데이터 노출, 자동 최적화, HealthKit 쓰기는 안전을 위해 기본적으로 꺼져 있습니다.",
-        "data": {"raw_retention_days": "원본 데이터 보관 기간(일)", "enable_sensitive": "민감 건강 항목을 HA 센서로 노출 허용", "self_optimizing": "환경 최적화 실험 기능 허용", "write_back": "HealthKit 쓰기 기능 허용"}
+        "title": "개인정보",
+        "description": "HealthLink 데이터는 로컬에서 처리합니다. 민감 건강 항목은 사용자가 직접 허용하기 전까지 일반 Home Assistant 센서로 노출하지 않습니다.",
+        "data": {
+          "raw_retention_days": "원본 데이터 보관 기간(일)",
+          "enable_sensitive": "민감 건강 항목을 HA 센서로 노출 허용"
+        }
       }
     }
   },
@@ -45,6 +64,9 @@
       "sleep_vs_baseline": {"name": "수면 개인 기준선 대비"},
       "activity_vs_baseline": {"name": "활동 개인 기준선 대비"}
     },
-    "binary_sensor": {"data_stale": {"name": "건강 데이터 지연"}, "recovery_below_baseline": {"name": "회복 상태가 평소보다 낮음"}}
+    "binary_sensor": {
+      "data_stale": {"name": "건강 데이터 지연"},
+      "recovery_below_baseline": {"name": "회복 상태가 평소보다 낮음"}
+    }
   }
 }
