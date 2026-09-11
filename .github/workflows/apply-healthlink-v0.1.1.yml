@@ -26,14 +26,21 @@ jobs:
           cat .healthlink-update/part_*.b64 | base64 -d > /tmp/healthlink-v0.1.1-overlay.tar.gz
           echo "2cbf1198291d962e6b262fd0320e7261a0a9c3e697bd011da2a29f81e8c2185e  /tmp/healthlink-v0.1.1-overlay.tar.gz" | sha256sum -c -
           tar -xzf /tmp/healthlink-v0.1.1-overlay.tar.gz
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/tests.yml')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('python-version: "3.13"', 'python-version: "3.14.2"')
+          path.write_text(text, encoding='utf-8')
+          PY
           rm -rf .healthlink-update
           rm -f .github/workflows/apply-healthlink-v0.1.1.yml
           rm -f .github/.healthlink-update-probe .github/.staging-readme
 
-      - name: Set up Python 3.13
+      - name: Set up Python 3.14.2
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14.2"
           cache: pip
 
       - name: Install test dependencies
@@ -55,7 +62,8 @@ jobs:
               json.loads(path.read_text(encoding='utf-8'))
           manifest = json.loads(Path('custom_components/health_link/manifest.json').read_text(encoding='utf-8'))
           assert manifest['version'] == '0.1.1', manifest['version']
-          print('JSON and manifest version validation passed')
+          assert 'python-version: "3.14.2"' in Path('.github/workflows/tests.yml').read_text(encoding='utf-8')
+          print('JSON, manifest and Python workflow validation passed')
           PY
 
       - name: Run unit tests
