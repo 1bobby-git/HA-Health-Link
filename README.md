@@ -21,8 +21,9 @@ HealthLink는 건강 데이터를 Home Assistant에 단순 복사하는 데서 �
 
 ## 왜 HealthLink가 필요한가요?
 
-- **별도 iPhone 앱 불필요**: 기본 사용은 공식 Home Assistant iOS Companion 앱만 사용합니다.
+- **별도 HealthLink iPhone 앱 불필요**: 기본 사용은 공식 Home Assistant iOS Companion 앱만 사용합니다.
 - **YAML 불필요**: Apple 건강 센서를 자동 탐색합니다.
+- **다중 iPhone 지원**: 같은 사람의 여러 iPhone을 한 건강 프로필에 묶거나, 가족별로 HealthLink 프로필을 따로 만들 수 있습니다.
 - **개인 기준선**: HRV, 안정 심박, 수면, 활동을 고정 임계값이 아니라 사용자의 최근 7/28/90/365일 패턴과 비교합니다.
 - **Health Composer**: HealthKit 데이터와 임의의 Home Assistant 엔티티를 조합해 새 센서를 만들 수 있습니다.
 - **건강 + 집 타임라인**: 수면·심박·활동과 온도·습도·CO₂·조명 같은 집 상태를 같은 시간축에서 확인합니다.
@@ -35,25 +36,26 @@ HealthLink는 건강 데이터를 Home Assistant에 단순 복사하는 데서 �
 
 ## 데이터는 어디서 가져오나요?
 
-기본 경로는 다음과 같습니다.
+HealthLink의 현재 기본 데이터 소스는 **공식 Home Assistant iOS 앱의 `Apple 건강 센서 (Labs)` 기능**입니다. 이 기능이 iPhone의 HealthKit을 읽어 Home Assistant `mobile_app` 건강 센서로 전송하고, HealthLink가 그 센서를 자동 수집합니다.
 
 ```text
 Apple Watch / iPhone / Apple 건강 앱
                 ↓
              HealthKit
                 ↓
-공식 Home Assistant iOS Companion 앱
+공식 Home Assistant iOS 앱
+Apple 건강 센서 (Labs)
                 ↓
-Home Assistant mobile_app 건강 센서
+Home Assistant mobile_app health_* 센서
                 ↓
              HealthLink
                 ↓
 개인 기준선 / Composer / 타임라인 / 인사이트 / 자동화
 ```
 
-Home Assistant Core는 일반적으로 Linux에서 실행되기 때문에 iPhone의 HealthKit DB를 직접 열 수 없습니다. 따라서 HealthKit 권한이 있는 **공식 Home Assistant iOS 앱을 전송 경로로 사용**합니다.
+HealthLink HACS 컴포넌트 자체가 iPhone HealthKit DB를 직접 여는 것은 아닙니다. Home Assistant Core는 일반적으로 Linux/HAOS에서 실행되고 Apple HealthKit API에 직접 접근할 수 없기 때문에 **HealthKit 읽기 역할은 공식 Home Assistant iOS 앱이 담당**합니다.
 
-HealthLink는 현재 Companion 앱이 노출하는 `health_*` 센서를 자동으로 찾으며, 앞으로 공식 앱에 새로운 건강 센서가 추가되어도 동적으로 탐색할 수 있도록 설계되어 있습니다.
+따라서 **별도 HealthLink 앱은 필요 없지만, 실시간 Apple Health/HealthKit 데이터를 받으려면 공식 Home Assistant iOS Companion 앱은 필요합니다.** HealthLink는 Companion 앱이 노출하는 `health_*` 센서를 자동으로 찾으며, 공식 앱에 새 건강 센서가 추가되어도 동적으로 탐색하도록 설계되어 있습니다.
 
 ### Home Assistant 로고 표시 방식
 
@@ -91,12 +93,16 @@ Home Assistant 2026.3 이상에서는 커스텀 통합이 `custom_components/hea
 ## 3. iPhone에서 Apple 건강 센서 활성화
 
 1. iPhone에서 **Home Assistant 앱** 실행
-2. **설정 → 센서 → Apple 건강 센서** 이동
+2. **설정 → 센서 → Apple 건강 센서 (Labs)** 이동
 3. 사용할 건강 센서 활성화
 4. `모든 센서를 활성화하기`가 보이면 한 번에 활성화 가능
 5. Home Assistant의 **HealthLink** 화면 확인
 
-한 대의 iPhone만 감지되면 자동으로 연결합니다. 여러 대의 iPhone이 있으면 가족의 건강 데이터가 섞이지 않도록 **본인의 iPhone을 한 번만 선택**합니다.
+한 대의 iPhone만 감지되면 자동으로 연결합니다. 여러 대의 iPhone이 있으면 설정 화면에서 기기를 선택합니다.
+
+- **한 사람이 iPhone 여러 대 사용**: 같은 HealthLink 프로필에서 여러 iPhone을 함께 선택할 수 있습니다.
+- **가족 여러 명 사용**: 사람마다 HealthLink 프로필을 하나씩 추가하고 각 사람의 iPhone을 해당 프로필에 선택하는 것을 권장합니다.
+- 이미 다른 HealthLink 프로필에 연결된 iPhone은 중복 선택할 수 없습니다.
 
 새로 활성화한 건강 센서는 Home Assistant 재시작 없이 자동 탐색합니다.
 
@@ -112,13 +118,22 @@ HACS를 사용하지 않는 경우 저장소의 `custom_components/health_link` 
 
 ---
 
+## 설정 화면과 HealthLink Studio의 차이
+
+HealthLink는 별도 앱을 설치하지 않습니다. Home Assistant 안에 두 종류의 화면이 있습니다.
+
+- **통합 설정(톱니바퀴)**: Home Assistant 표준 Options Flow. 연결할 iPhone, 기준선 기간, 데이터 보존기간, 개인정보 옵션을 변경합니다.
+- **HealthLink Studio(사이드바)**: 건강 데이터 탐색, 타임라인, Health Composer, 인사이트를 제공하는 Home Assistant 내부 패널입니다.
+
+즉 사이드바의 HealthLink Studio는 외부 앱이나 iOS 앱이 아니라 **HACS 컴포넌트가 Home Assistant 내부에 제공하는 화면**입니다.
+
+---
+
 ## 주요 기능
 
 ### 개인 기준선
 
 사용자의 과거 데이터를 기준으로 현재 상태를 비교합니다.
-
-예:
 
 ```text
 HRV      평소 대비 -18%
@@ -133,8 +148,6 @@ HRV      평소 대비 -18%
 ### Health Composer
 
 HealthKit 데이터와 Home Assistant 엔티티를 조합해 사용자가 새로운 센서를 만들 수 있습니다.
-
-예:
 
 ```text
 HRV + 깊은 수면 + 침실 CO₂ + 침실 온도
@@ -159,8 +172,6 @@ HRV + 깊은 수면 + 침실 CO₂ + 침실 온도
 ### 인사이트
 
 HealthLink는 장기간 데이터를 이용해 관측 가능한 관계를 계산합니다.
-
-예:
 
 - 침실 CO₂와 깊은 수면
 - 실내 온도와 HRV
@@ -231,9 +242,9 @@ HealthLink는 건강 데이터 특성상 기본 설정을 보수적으로 구성
 
 ## 지원 범위와 한계
 
-HealthLink가 기본적으로 사용할 수 있는 범위는 **설치된 공식 Home Assistant iOS Companion 앱이 HealthKit에서 노출하는 데이터**입니다.
+HealthLink가 기본적으로 사용할 수 있는 범위는 **설치된 공식 Home Assistant iOS Companion 앱의 Apple 건강 센서(Labs)가 HealthKit에서 노출하는 데이터**입니다.
 
-현재 서버측 저장 구조는 향후 Workout, Route, ECG, Heartbeat Series 등 구조화 HealthKit 객체를 수용할 수 있게 설계되어 있지만, Linux의 HACS 통합만으로 iPhone HealthKit 전체를 직접 읽을 수는 없습니다.
+공식 iOS 앱의 현재 HealthKit 카탈로그 자체도 HealthKit 전체가 아니라 단계적으로 확대되는 범위입니다. HealthLink 서버측 저장 구조는 향후 Workout, Route, ECG, Heartbeat Series 등 구조화 HealthKit 객체를 수용할 수 있게 설계되어 있지만, Linux의 HACS 통합만으로 iPhone HealthKit 전체를 직접 읽을 수는 없습니다.
 
 전체 HealthKit 범위 확대는 별도 HealthLink iOS 앱을 사용자에게 요구하는 대신 **공식 Home Assistant iOS 앱 지원 확대를 우선**합니다. 이전 개발용 `ios/HealthLinkBridge` 스캐폴드는 일반 사용자에게 필요하지 않고 제품 방향과 맞지 않아 저장소에서 제거했습니다.
 
@@ -243,14 +254,14 @@ HealthLink가 기본적으로 사용할 수 있는 범위는 **설치된 공식 
 
 ### HealthLink에 데이터가 보이지 않을 때
 
-1. iPhone Home Assistant 앱에서 Apple 건강 센서가 활성화되어 있는지 확인
+1. iPhone Home Assistant 앱에서 Apple 건강 센서(Labs)가 활성화되어 있는지 확인
 2. Apple 건강 앱에서 Home Assistant의 HealthKit 읽기 권한 확인
 3. Home Assistant의 `mobile_app` 통합이 정상인지 확인
 4. HealthLink 화면에서 **다시 확인** 실행
 
 ### 여러 iPhone이 있을 때
 
-HealthLink 설정에서 본인의 iPhone을 선택합니다. 잘못된 건강 데이터 혼합을 막기 위해 여러 기기가 감지되면 자동 선택하지 않습니다.
+**설정 → 기기 및 서비스 → HealthLink → 설정**에서 이 프로필에 연결할 iPhone을 선택합니다. 같은 사람의 여러 iPhone은 함께 선택할 수 있고, 다른 사람은 별도의 HealthLink 프로필로 분리하는 것을 권장합니다.
 
 ### 새 센서를 켰는데 바로 보이지 않을 때
 
@@ -262,7 +273,7 @@ HealthLink 설정에서 본인의 iPhone을 선택합니다. 잘못된 건강 �
 
 HACS에서 새 버전이 표시되면 **Update** 후 Home Assistant를 재시작합니다.
 
-현재 버전: **v0.1.3**
+현재 버전: **v0.1.4**
 
 ---
 
