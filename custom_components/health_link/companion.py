@@ -80,8 +80,13 @@ class CompanionImporter:
         )
         # Health sensors can legitimately report the same value again at a later time.
         # EVENT_STATE_REPORTED preserves those samples even when the state text is unchanged.
+        # Home Assistant requires a callback event_filter for this high-volume event.
         self._unsubs.append(
-            self.hass.bus.async_listen(EVENT_STATE_REPORTED, self._state_reported)
+            self.hass.bus.async_listen(
+                EVENT_STATE_REPORTED,
+                self._state_reported,
+                event_filter=self._state_reported_filter,
+            )
         )
         self._unsubs.append(
             self.hass.bus.async_listen(
@@ -183,6 +188,12 @@ class CompanionImporter:
     @callback
     def _state_changed(self, event: Event) -> None:
         self._queue_event_state(event)
+
+    @callback
+    def _state_reported_filter(self, event_data: dict[str, Any]) -> bool:
+        """Accept state_reported only for Health sensors imported by this profile."""
+        entity_id = event_data.get("entity_id")
+        return isinstance(entity_id, str) and entity_id in self._entity_map
 
     @callback
     def _state_reported(self, event: Event) -> None:

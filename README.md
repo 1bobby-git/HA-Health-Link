@@ -55,6 +55,10 @@ Home Assistant Core는 일반적으로 Linux에서 실행되기 때문에 iPhone
 
 HealthLink는 현재 Companion 앱이 노출하는 `health_*` 센서를 자동으로 찾으며, 앞으로 공식 앱에 새로운 건강 센서가 추가되어도 동적으로 탐색할 수 있도록 설계되어 있습니다.
 
+### Home Assistant 로고 표시 방식
+
+Home Assistant 2026.3 이상에서는 커스텀 통합이 `custom_components/health_link/brand/` 폴더에 포함한 `icon.png`와 `logo.png`를 **로컬 Brands Proxy API**(`/api/brands/integration/health_link/...`)를 통해 표시합니다. HealthLink는 승인된 정사각형 아이콘과 가로형 로고를 이 방식으로 제공합니다.
+
 ---
 
 # 설치 방법
@@ -258,7 +262,7 @@ HealthLink 설정에서 본인의 iPhone을 선택합니다. 잘못된 건강 �
 
 HACS에서 새 버전이 표시되면 **Update** 후 Home Assistant를 재시작합니다.
 
-현재 버전: **v0.1.2**
+현재 버전: **v0.1.3**
 
 ---
 
