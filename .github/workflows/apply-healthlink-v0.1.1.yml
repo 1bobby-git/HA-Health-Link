@@ -1,0 +1,84 @@
+name: Apply HealthLink v0.1.1 update
+
+on:
+  push:
+    branches: [healthlink-v0.1.1]
+    paths:
+      - ".github/workflows/apply-healthlink-v0.1.1.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout staging branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rebuild and verify update overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .healthlink-update/part_*.b64 | base64 -d > /tmp/healthlink-v0.1.1-overlay.tar.gz
+          echo "2cbf1198291d962e6b262fd0320e7261a0a9c3e697bd011da2a29f81e8c2185e  /tmp/healthlink-v0.1.1-overlay.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/healthlink-v0.1.1-overlay.tar.gz
+          rm -rf .healthlink-update
+          rm -f .github/workflows/apply-healthlink-v0.1.1.yml
+          rm -f .github/.healthlink-update-probe .github/.staging-readme
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install test dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "homeassistant>=2026.8.0,<2027.0" pytest ruff
+
+      - name: Validate Python and JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m ruff check --select E9,F63,F7,F82 custom_components tests
+          python -m compileall -q custom_components/health_link
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for path in Path('.').rglob('*.json'):
+              json.loads(path.read_text(encoding='utf-8'))
+          manifest = json.loads(Path('custom_components/health_link/manifest.json').read_text(encoding='utf-8'))
+          assert manifest['version'] == '0.1.1', manifest['version']
+          print('JSON and manifest version validation passed')
+          PY
+
+      - name: Run unit tests
+        run: python -m pytest -q
+
+      - name: Validate HealthLink Studio JavaScript
+        run: node --check custom_components/health_link/frontend/health-link-panel.js
+
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: integration
+
+      - name: Hassfest validation
+        uses: home-assistant/actions/hassfest@master
+
+      - name: Commit hardened v0.1.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "feat: harden zero-friction HealthLink v0.1.1"
+          git push origin HEAD:healthlink-v0.1.1
