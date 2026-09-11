@@ -13,7 +13,7 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     OptionsFlowWithReload,
 )
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 
 from .companion import discover_companion_devices
 from .const import (
@@ -42,6 +42,30 @@ from .const import (
     DEFAULT_WRITE_BACK,
     DOMAIN,
 )
+
+
+def _entry_companion_device_id(entry: ConfigEntry) -> str | None:
+    """Return the persisted or currently auto-bound Companion device for an entry."""
+    configured = entry.options.get(CONF_COMPANION_DEVICE_ID) or entry.data.get(
+        CONF_COMPANION_DEVICE_ID
+    )
+    if configured:
+        return str(configured)
+    runtime = getattr(entry, "runtime_data", None)
+    companion = getattr(runtime, "companion", None) if runtime is not None else None
+    bound = getattr(companion, "bound_device_id", None)
+    return str(bound) if bound else None
+
+
+def _device_in_use(
+    hass: HomeAssistant, device_id: str, *, exclude_entry_id: str | None = None
+) -> bool:
+    """Prevent two health profiles from silently importing the same person's phone."""
+    return any(
+        entry.entry_id != exclude_entry_id
+        and _entry_companion_device_id(entry) == device_id
+        for entry in hass.config_entries.async_entries(DOMAIN)
+    )
 
 
 class HealthLinkConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -76,9 +100,11 @@ class HealthLinkConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
 
                 # One HealthLink profile per Companion device prevents accidental
-                # duplicate imports. A profile created before Health sensors exist
-                # keeps a generated id and binds automatically when one device appears.
+                # duplicate imports. Also detect entries that were created before
+                # Health sensors existed and were auto-bound at runtime later.
                 if selected:
+                    if _device_in_use(self.hass, str(selected)):
+                        return self.async_abort(reason="already_configured")
                     await self.async_set_unique_id(f"companion:{selected}")
                     self._abort_if_unique_id_configured()
                 else:
@@ -140,9 +166,18 @@ class HealthLinkOptionsFlow(OptionsFlowWithReload):
     async def async_step_general(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
-            self._options.update(user_input)
-            return await self.async_step_privacy()
+            selected = user_input.get(CONF_COMPANION_DEVICE_ID)
+            if selected and _device_in_use(
+                self.hass,
+                str(selected),
+                exclude_entry_id=self.config_entry.entry_id,
+            ):
+                errors[CONF_COMPANION_DEVICE_ID] = "device_already_used"
+            else:
+                self._options.update(user_input)
+                return await self.async_step_privacy()
 
         fields: dict[Any, Any] = {
             vol.Optional(
@@ -183,6 +218,7 @@ class HealthLinkOptionsFlow(OptionsFlowWithReload):
         return self.async_show_form(
             step_id="general",
             data_schema=vol.Schema(fields),
+            errors=errors,
         )
 
     async def async_step_privacy(
