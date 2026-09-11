@@ -1,7 +1,7 @@
 """Zero-friction import of official Home Assistant iOS Apple Health sensors."""
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import timedelta
 import hashlib
 import logging
@@ -56,14 +56,28 @@ def discover_companion_devices(hass: HomeAssistant) -> dict[str, str]:
     return devices
 
 
+def _normalize_device_ids(device_ids: str | Iterable[str] | None) -> frozenset[str]:
+    """Normalize one or many Companion device ids."""
+    if device_ids is None:
+        return frozenset()
+    if isinstance(device_ids, str):
+        return frozenset({device_ids}) if device_ids else frozenset()
+    return frozenset(str(device_id) for device_id in device_ids if device_id)
+
+
 class CompanionImporter:
     """Mirror official iOS Apple Health sensor updates into the universal store."""
 
-    def __init__(self, hass: HomeAssistant, runtime, device_id: str | None) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        runtime,
+        device_ids: str | Iterable[str] | None,
+    ) -> None:
         self.hass = hass
         self.runtime = runtime
-        self.device_id = device_id
-        self._bound_device_id: str | None = device_id
+        self.device_ids = _normalize_device_ids(device_ids)
+        self._bound_device_ids: set[str] = set(self.device_ids)
         self._needs_device_selection = False
         self._entity_map: dict[str, str] = {}
         self._pending: dict[str, tuple[Any, str, er.RegistryEntry | None]] = {}
@@ -131,12 +145,12 @@ class CompanionImporter:
 
     async def _async_rescan(self, *, import_now: bool) -> None:
         registry = er.async_get(self.hass)
-        effective_device_id = self.device_id or self._bound_device_id
-        if effective_device_id is None:
+        effective_device_ids = set(self.device_ids or self._bound_device_ids)
+        if not effective_device_ids:
             devices = discover_companion_devices(self.hass)
             if len(devices) == 1:
-                effective_device_id = next(iter(devices))
-                self._bound_device_id = effective_device_id
+                effective_device_ids = {next(iter(devices))}
+                self._bound_device_ids = set(effective_device_ids)
                 self._needs_device_selection = False
             elif len(devices) > 1:
                 self._entity_map = {}
@@ -146,12 +160,15 @@ class CompanionImporter:
                 self._entity_map = {}
                 self._needs_device_selection = False
                 return
+        else:
+            self._bound_device_ids = set(effective_device_ids)
+            self._needs_device_selection = False
 
         mapping: dict[str, str] = {}
         for entry in registry.entities.values():
             if entry.platform != "mobile_app" or entry.domain != "sensor":
                 continue
-            if entry.device_id != effective_device_id:
+            if entry.device_id not in effective_device_ids:
                 continue
             uid = _metric_unique_id(entry)
             if uid:
@@ -174,8 +191,14 @@ class CompanionImporter:
             await self.runtime.coordinator.async_refresh_from_store()
 
     @property
+    def bound_device_ids(self) -> tuple[str, ...]:
+        """Return all Companion devices currently bound to this health profile."""
+        return tuple(sorted(self._bound_device_ids))
+
+    @property
     def bound_device_id(self) -> str | None:
-        return self._bound_device_id
+        """Legacy single-device view used by older config entries."""
+        return next(iter(self._bound_device_ids)) if len(self._bound_device_ids) == 1 else None
 
     @property
     def needs_device_selection(self) -> bool:

@@ -4,35 +4,39 @@
     "step": {
       "user": {
         "title": "HealthLink 시작하기",
-        "description": "YAML, Webhook 주소, 토큰, 센서 ID 입력은 필요 없습니다. 공식 Home Assistant iPhone 앱의 Apple 건강 센서를 자동으로 찾습니다. 감지된 iPhone: {device_count}개.",
+        "description": "YAML, Webhook 주소, 토큰, 센서 ID 입력은 필요 없습니다. 공식 Home Assistant iPhone 앱의 Apple 건강 센서를 자동으로 찾습니다. 감지된 iPhone: {device_count}개, 새 프로필에 연결 가능한 iPhone: {available_device_count}개.",
         "data": {
           "profile_name": "건강 프로필 이름",
-          "companion_device_id": "내 iPhone"
+          "companion_device_ids": "이 프로필에 연결할 iPhone"
         },
         "data_description": {
           "profile_name": "예: 내 건강, 원바비",
-          "companion_device_id": "여러 iPhone이 있을 때 본인의 기기만 선택합니다."
+          "companion_device_ids": "같은 사람의 iPhone이 여러 대라면 함께 선택할 수 있습니다. 다른 사람의 iPhone은 별도 HealthLink 프로필로 등록하는 것을 권장합니다."
         }
       }
     },
     "error": {
-      "profile_name_required": "프로필 이름을 입력하세요."
+      "profile_name_required": "프로필 이름을 입력하세요.",
+      "device_already_used": "선택한 iPhone 중 하나 이상이 이미 다른 HealthLink 건강 프로필에 연결되어 있습니다."
     },
     "abort": {
-      "already_configured": "이 iPhone은 이미 HealthLink에 연결되어 있습니다."
+      "already_configured": "선택한 iPhone은 이미 HealthLink에 연결되어 있습니다."
     }
   },
   "options": {
     "step": {
       "general": {
         "title": "일반 설정",
-        "description": "기본값을 그대로 사용하는 것을 권장합니다. 공식 Home Assistant iPhone 앱은 자동으로 연결되며, 대부분의 사용자는 개인 기준선 기간만 필요에 따라 조정하면 됩니다.",
+        "description": "이 화면은 Home Assistant 표준 통합 설정입니다. HealthLink Studio는 별도의 사이드바 화면이며 별도 앱이 아닙니다. 같은 사람의 iPhone이 여러 대라면 이 프로필에 함께 선택할 수 있습니다.",
         "data": {
           "baseline_window": "개인 기준선 기간(일)",
           "stale_hours": "데이터 지연 경고(시간)",
           "enable_composer": "센서 만들기(Health Composer)",
           "enable_context": "건강·집 컨텍스트 분석",
-          "companion_device_id": "내 iPhone"
+          "companion_device_ids": "연결할 iPhone"
+        },
+        "data_description": {
+          "companion_device_ids": "같은 사람의 여러 iPhone을 한 프로필에 묶을 수 있습니다. 다른 사람의 기기는 별도 건강 프로필에 연결하세요."
         }
       },
       "privacy": {
@@ -45,7 +49,7 @@
       }
     },
     "error": {
-      "device_already_used": "이 iPhone은 이미 다른 HealthLink 건강 프로필에 연결되어 있습니다."
+      "device_already_used": "선택한 iPhone 중 하나 이상이 이미 다른 HealthLink 건강 프로필에 연결되어 있습니다."
     }
   },
   "entity": {

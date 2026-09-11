@@ -2,15 +2,27 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.1.4] - 2026-09-12
+
+### Changed
+- A single HealthLink personal profile can now bind multiple Home Assistant Companion iPhones owned by the same person.
+- Multiple household members remain isolated by using separate HealthLink profiles; an iPhone already assigned to another profile is excluded from selection.
+- Existing single-iPhone entries migrate automatically to the new multi-device list without losing their selected phone.
+- The integration settings gear now opens the normal Home Assistant Options Flow. HealthLink Studio remains a separate Home Assistant sidebar panel and is no longer registered as the integration configuration panel.
+- Setup text now makes it explicit that the data source is the official Home Assistant iOS **Apple Health Sensors (Labs)** feature, not a separate HealthLink app.
+
+### Data handling
+- When several iPhones are attached to one profile, HealthLink imports their `mobile_app` Apple Health sensors into the same personal store while preserving source device provenance.
+- Snapshot/latest calculations continue to select the newest sample for a metric rather than summing duplicate iPhone snapshots.
+
 ## [0.1.3] - 2026-09-12
 
 ### Fixed
-- Fixed Home Assistant setup failure caused by subscribing to `EVENT_STATE_REPORTED` without the event filter required by current Home Assistant Core.
-- Added a callback filter that limits `state_reported` processing to Apple Health entities already mapped to the active HealthLink profile, preserving repeated equal-value health samples without listening to unrelated state reports.
+- Added the callback `event_filter` required by Home Assistant Core for `EVENT_STATE_REPORTED`, fixing HealthLink config-entry setup failures on current Home Assistant releases.
+- Limited repeated-state processing to Apple Health entities that belong to the active HealthLink profile.
 
 ### Branding
-- Added `custom_components/health_link/brand/logo.png` so Home Assistant 2026.3+ can serve the approved HealthLink horizontal logo through the local Brands Proxy API.
-- Kept the approved square HealthLink icon as the local integration icon. Local custom-integration brand assets take precedence over the legacy Home Assistant brands CDN entry.
+- Added the approved horizontal HealthLink logo beside the square icon in `custom_components/health_link/brand/` so Home Assistant 2026.3+ can serve both through its local Brands Proxy API.
 
 ## [0.1.2] - 2026-09-12
 

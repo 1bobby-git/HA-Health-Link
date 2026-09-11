@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 from .companion import CompanionImporter
 from .const import (
     CONF_COMPANION_DEVICE_ID,
+    CONF_COMPANION_DEVICE_IDS,
     CONF_PROFILE_ID,
     CONF_PROFILE_NAME,
     CONF_SOURCE_MODE,
@@ -34,6 +35,7 @@ _STATIC_URL = "/health_link_static"
 _DATA_STATIC_READY = "frontend_static_ready"
 _DATA_PANEL_READY = "frontend_panel_ready"
 _DATA_WS_READY = "ws_ready"
+_CONFIG_MINOR_VERSION = 3
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -47,7 +49,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 
 async def _async_setup_frontend(hass: HomeAssistant) -> None:
-    """Register HealthLink Studio once."""
+    """Register HealthLink Studio once as a normal sidebar panel."""
     domain_data = hass.data.setdefault(DOMAIN, {})
     if not domain_data.get(_DATA_STATIC_READY):
         static_dir = Path(__file__).parent / "frontend"
@@ -65,10 +67,25 @@ async def _async_setup_frontend(hass: HomeAssistant) -> None:
         sidebar_icon="mdi:heart-pulse",
         module_url=f"{_STATIC_URL}/health-link-panel.js?v={VERSION}",
         require_admin=True,
-        config_panel_domain=DOMAIN,
         handle_safe_area=True,
     )
     domain_data[_DATA_PANEL_READY] = True
+
+
+def _configured_companion_device_ids(entry: ConfigEntry) -> list[str] | None:
+    """Return configured multi-device ids with legacy single-device fallback."""
+    configured = entry.options.get(CONF_COMPANION_DEVICE_IDS)
+    if configured is None:
+        configured = entry.data.get(CONF_COMPANION_DEVICE_IDS)
+    if configured is not None:
+        if isinstance(configured, str):
+            return [configured] if configured else []
+        return [str(device_id) for device_id in configured if device_id]
+
+    legacy = entry.options.get(CONF_COMPANION_DEVICE_ID) or entry.data.get(
+        CONF_COMPANION_DEVICE_ID
+    )
+    return [str(legacy)] if legacy else None
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -103,10 +120,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         importer = CompanionImporter(
             hass,
             runtime,
-            entry.options.get(
-                CONF_COMPANION_DEVICE_ID,
-                entry.data.get(CONF_COMPANION_DEVICE_ID),
-            ),
+            _configured_companion_device_ids(entry),
         )
         runtime.companion = importer
         await importer.async_start()
@@ -144,7 +158,25 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate older HealthLink config entries."""
+    """Migrate older HealthLink config entries without losing the selected iPhone."""
     if entry.version > 1:
         return False
+
+    if entry.version == 1 and entry.minor_version < _CONFIG_MINOR_VERSION:
+        data = dict(entry.data)
+        options = dict(entry.options)
+        if (
+            CONF_COMPANION_DEVICE_IDS not in data
+            and CONF_COMPANION_DEVICE_IDS not in options
+        ):
+            legacy = options.get(CONF_COMPANION_DEVICE_ID) or data.get(
+                CONF_COMPANION_DEVICE_ID
+            )
+            data[CONF_COMPANION_DEVICE_IDS] = [str(legacy)] if legacy else []
+        hass.config_entries.async_update_entry(
+            entry,
+            data=data,
+            options=options,
+            minor_version=_CONFIG_MINOR_VERSION,
+        )
     return True

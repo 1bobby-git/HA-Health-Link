@@ -4,35 +4,39 @@
     "step": {
       "user": {
         "title": "Set up HealthLink",
-        "description": "No YAML, webhook URL, token or sensor IDs are required. HealthLink automatically discovers Apple Health sensors from the official Home Assistant iPhone app. Detected iPhones: {device_count}.",
+        "description": "No YAML, webhook URL, token or sensor IDs are required. HealthLink automatically discovers Apple Health sensors from the official Home Assistant iPhone app. Detected iPhones: {device_count}; available for this profile: {available_device_count}.",
         "data": {
           "profile_name": "Health profile name",
-          "companion_device_id": "My iPhone"
+          "companion_device_ids": "iPhones for this profile"
         },
         "data_description": {
           "profile_name": "For example: My Health",
-          "companion_device_id": "When multiple iPhones exist, choose only the phone that belongs to this profile."
+          "companion_device_ids": "If one person uses multiple iPhones, you can select them together. Use a separate HealthLink profile for another person's iPhone."
         }
       }
     },
     "error": {
-      "profile_name_required": "Enter a profile name."
+      "profile_name_required": "Enter a profile name.",
+      "device_already_used": "One or more selected iPhones already belong to another HealthLink profile."
     },
     "abort": {
-      "already_configured": "This iPhone is already connected to HealthLink."
+      "already_configured": "The selected iPhone is already connected to HealthLink."
     }
   },
   "options": {
     "step": {
       "general": {
         "title": "General settings",
-        "description": "The defaults are recommended. HealthLink uses your official Home Assistant iPhone app automatically; most users only need to choose how much history to use for personal baselines.",
+        "description": "This is the standard Home Assistant integration settings flow. HealthLink Studio is a separate Home Assistant sidebar panel, not a separate app. Multiple iPhones owned by the same person can be selected together.",
         "data": {
           "baseline_window": "Personal baseline window (days)",
           "stale_hours": "Stale data warning (hours)",
           "enable_composer": "Health Composer",
           "enable_context": "Health + home context analysis",
-          "companion_device_id": "My iPhone"
+          "companion_device_ids": "Connected iPhones"
+        },
+        "data_description": {
+          "companion_device_ids": "Group multiple iPhones for the same person in this profile. Connect another person's phone to a separate HealthLink profile."
         }
       },
       "privacy": {
@@ -45,7 +49,7 @@
       }
     },
     "error": {
-      "device_already_used": "This iPhone already belongs to another HealthLink profile."
+      "device_already_used": "One or more selected iPhones already belong to another HealthLink profile."
     }
   },
   "entity": {
