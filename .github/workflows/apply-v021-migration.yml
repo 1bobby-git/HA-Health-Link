@@ -1,0 +1,39 @@
+name: Apply HealthLink v0.2.1 migration
+on:
+  push:
+    branches: [healthlink-v0.2.1-native-options-duplicates]
+    paths:
+      - '.healthlink-maintenance/reenable_duplicates.py'
+      - '.github/workflows/apply-v021-migration.yml'
+permissions:
+  contents: write
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: healthlink-v0.2.1-native-options-duplicates
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - run: pip install 'homeassistant==2026.9.1' pytest ruff
+      - run: python .healthlink-maintenance/reenable_duplicates.py
+      - run: |
+          ruff check --select E9,F63,F7,F82 custom_components tests
+          python -m compileall -q custom_components/health_link
+          python -m pytest -q
+      - run: |
+          node --check custom_components/health_link/frontend/health-link-panel.js
+          node --test tests/test_panel.cjs
+      - name: Commit verified migration
+        run: |
+          rm -rf .healthlink-maintenance .github/workflows/apply-v021-migration.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: restore only integration-disabled duplicate summaries (v0.2.1)'
+          git push origin HEAD:healthlink-v0.2.1-native-options-duplicates
