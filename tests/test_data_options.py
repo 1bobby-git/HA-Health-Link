@@ -7,6 +7,7 @@ import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 
+from custom_components.health_link.const import DOMAIN
 from custom_components.health_link.options_data import HealthDataOptionsMixin
 from custom_components.health_link.data_features import _finish_worker
 from custom_components.health_link.health_import import ECG_TYPE
@@ -18,6 +19,8 @@ class Flow(HealthDataOptionsMixin):
         self.async_show_form = Mock(side_effect=lambda **kw: {"type": "form", **kw})
         self.async_create_entry = Mock(side_effect=lambda **kw: {"type": "create_entry", **kw})
         self.async_abort = Mock(side_effect=lambda **kw: {"type": "abort", **kw})
+        self.async_show_progress = Mock(side_effect=lambda **kw: {"type": "progress", **kw})
+        self.async_show_progress_done = Mock(side_effect=lambda **kw: {"type": "progress_done", **kw})
 
 
 def test_native_exposure_requires_sensitive_consent_and_preserves_existing_options(monkeypatch):
@@ -49,13 +52,56 @@ def test_native_exposure_requires_sensitive_consent_and_preserves_existing_optio
 
 def test_import_form_requires_profile_confirmation_before_starting_work():
     async def run():
-        entry = NS(title="A", state=ConfigEntryState.LOADED, disabled_by=None,
+        entry = NS(entry_id="profile-a", title="A", state=ConfigEntryState.LOADED, disabled_by=None,
                    options={}, runtime_data=NS())
         flow = Flow(entry)
-        flow.hass = NS(async_create_task=Mock())
+        flow.hass = NS(data={}, async_create_task=Mock())
         result = await flow.async_step_import_data({"file_id": "file-a", "confirm_profile": False})
         assert result["errors"]["confirm_profile"] == "confirm_profile_required"
         flow.hass.async_create_task.assert_not_called()
+    asyncio.run(run())
+
+
+def test_import_form_defaults_to_ecg_only_fast_path():
+    async def run():
+        entry = NS(entry_id="profile-a", title="A", state=ConfigEntryState.LOADED, disabled_by=None,
+                   options={}, runtime_data=NS())
+        flow = Flow(entry)
+        flow.hass = NS(data={})
+        result = await flow.async_step_import_data()
+        schema = result["data_schema"].schema
+        scope_key = next(key for key in schema if getattr(key, "schema", key) == "scope")
+        assert scope_key.default() == "ecg"
+    asyncio.run(run())
+
+
+def test_import_progress_survives_browser_flow_reconnect():
+    async def run():
+        entry = NS(entry_id="profile-a", title="A", state=ConfigEntryState.LOADED, disabled_by=None,
+                   options={}, runtime_data=NS())
+        release = asyncio.Event()
+        async def worker():
+            await release.wait()
+            return {"inserted": 1, "updated": 0, "ecg_new": 1,
+                    "skipped_sensitive": 0, "skipped_unsupported": 0}
+        task = asyncio.create_task(worker())
+        hass = NS(data={DOMAIN: {"option_import_jobs": {entry.entry_id: task}}})
+
+        first = Flow(entry); first.hass = hass
+        progress = await first.async_step_import_data()
+        assert progress["type"] == "progress"
+        assert progress["progress_task"] is task
+
+        release.set(); await task
+        # A new flow object represents reopening settings after WebSocket/browser loss.
+        second = Flow(entry); second.hass = hass
+        done = await second.async_step_import_data()
+        assert done["type"] == "progress_done"
+        result = await second.async_step_import_result()
+        assert result["description_placeholders"]["ecg_new"] == "1"
+        saved = await second.async_step_import_result({})
+        assert saved["type"] == "create_entry"
+        assert entry.entry_id not in hass.data[DOMAIN]["option_import_jobs"]
     asyncio.run(run())
 
 
