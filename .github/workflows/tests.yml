@@ -22,7 +22,7 @@ jobs:
           python-version: "3.14"
           cache: pip
       - run: python -m pip install --upgrade pip
-      - run: pip install "homeassistant==${{ matrix.homeassistant }}" pytest ruff
+      - run: pip install "homeassistant==${{ matrix.homeassistant }}" 'defusedxml==0.7.1' pytest ruff
       - run: ruff check --select E9,F63,F7,F82 custom_components tests
       - run: python -m compileall -q custom_components/health_link
       - run: python -m pytest -q

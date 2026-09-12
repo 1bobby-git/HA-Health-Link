@@ -1,0 +1,32 @@
+name: Apply HealthLink v0.3.0
+on:
+  push:
+    branches: [healthlink-v0.3.0-health-data-ecg]
+    paths: ['.healthlink-v030/**', '.github/workflows/apply-v030.yml', 'custom_components/health_link/health_import.py', 'custom_components/health_link/data_features.py', 'custom_components/health_link/options_data.py', 'custom_components/health_link/ecg_entities.py', 'custom_components/health_link/image.py', 'tests/test_health_import.py']
+permissions:
+  contents: write
+jobs:
+  apply-and-verify:
+    if: github.repository == '1bobby-git/HA-Health-Link'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: healthlink-v0.3.0-health-data-ecg
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - run: pip install 'homeassistant==2026.9.1' 'defusedxml==0.7.1' pytest ruff
+      - run: python .healthlink-v030/apply.py
+      - run: ruff check --select E9,F63,F7,F82 custom_components tests && python -m compileall -q custom_components/health_link && python -m pytest -q
+      - run: node --check custom_components/health_link/frontend/health-link-panel.js && node --test tests/test_panel.cjs
+      - name: Commit only verified code to working branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A -- custom_components tests docs README.md CHANGELOG.md .healthlink-v030
+          git commit -m 'feat: native health metric exposure, local import and ECG records (v0.3.0)'
+          git push origin HEAD:healthlink-v0.3.0-health-data-ecg
