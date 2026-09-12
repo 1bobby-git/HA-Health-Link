@@ -2,6 +2,7 @@ from pathlib import Path
 import json
 
 ROOT = Path('.')
+# v0.2.1 intentionally keeps Mobile App-equivalent HealthLink summaries enabled.
 
 # 1) Keep duplicate Apple Health summary entities enabled by default.
 p = ROOT / 'custom_components/health_link/sensor.py'
