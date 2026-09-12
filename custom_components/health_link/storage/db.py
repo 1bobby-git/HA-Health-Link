@@ -79,7 +79,7 @@ class HealthLinkStore:
         return dt.astimezone(zone).date().isoformat()
 
     async def async_ingest(self,items:Sequence[dict[str,Any]],*,sequence:int|None=None)->dict[str,int]:return await self._run(self._ingest_sync,list(items),sequence)
-    def _ingest_sync(self,items:list[dict[str,Any]],sequence:int|None)->dict[str,int]:
+    def _ingest_sync(self,items:list[dict[str,Any]],sequence:int|None,*,update_sync:bool=True)->dict[str,int]:
         inserted=updated=ignored=0;now=_utcnow()
         with self._connect() as con:
             con.executescript(_SCHEMA)
@@ -115,7 +115,8 @@ class HealthLinkStore:
                 existed=con.execute("SELECT 1 FROM samples WHERE profile_id=? AND sample_uuid=?",(self.profile_id,uuid)).fetchone()
                 con.execute("INSERT OR REPLACE INTO samples(profile_id,sample_uuid,type_id,object_kind,start_ts,end_ts,local_date,numeric_value,text_value,canonical_unit,category_code,source_key,source_json,metadata_json,deleted,ingest_seq,modified_ts) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(self.profile_id,uuid,type_id,kind,start,end,self._local_date(end,item.get("local_date")),numeric,text,item.get("unit") or item.get("canonical_unit"),item.get("category_code"),_source_key(source),_json(source),_json(item.get("metadata")),int(bool(item.get("deleted"))),sequence,now))
                 updated+=bool(existed);inserted+=not bool(existed)
-            con.execute("INSERT INTO meta(profile_id,key,value) VALUES(?,?,?) ON CONFLICT(profile_id,key) DO UPDATE SET value=excluded.value",(self.profile_id,"last_sync",now))
+            if update_sync:
+                con.execute("INSERT INTO meta(profile_id,key,value) VALUES(?,?,?) ON CONFLICT(profile_id,key) DO UPDATE SET value=excluded.value",(self.profile_id,"last_sync",now))
         return {"inserted":int(inserted),"updated":int(updated),"ignored":ignored}
 
     async def async_last_sequence(self,bridge_id:str)->int:return await self._run(self._last_sequence_sync,bridge_id)
@@ -241,7 +242,8 @@ class HealthLinkStore:
         with self._connect() as con:
             a=con.execute("DELETE FROM samples WHERE profile_id=? AND end_ts<?",(self.profile_id,cutoff)).rowcount
             b=con.execute("DELETE FROM structured_objects WHERE profile_id=? AND end_ts<?",(self.profile_id,cutoff)).rowcount
-        return int(a)+int(b)
+            c=con.execute("DELETE FROM series_chunks WHERE profile_id=? AND end_ts<?",(self.profile_id,cutoff)).rowcount
+        return int(a)+int(b)+int(c)
 
     async def async_save_composer(self,definition_id:str,name:str,definition:dict[str,Any],*,enabled:bool=True)->None:await self._run(self._save_composer_sync,definition_id,name,json.dumps(definition,ensure_ascii=False),enabled)
     def _save_composer_sync(self,definition_id:str,name:str,raw:str,enabled:bool)->None:

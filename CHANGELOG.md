@@ -2,6 +2,26 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.3.0] - 2026-09-12
+
+### Added
+- Native options menu for discovered health metric exposure and local file import.
+- Bounded streaming Apple Health XML/ZIP import of quantity, category and workout records, isolated from Companion aggregate series by source and unit.
+- ECG JSON and supported Apple-export style English CSV import with explicit timestamp/unit/count validation.
+- Six opt-in ECG summary sensors and a native authenticated HA image entity for a non-diagnostic waveform preview.
+- Administrator-only catalogue, import, ECG list/detail and paginated waveform response actions; import-complete and new-ECG-record events.
+
+### Fixed
+- Historical imports no longer reset the live Companion freshness timestamp.
+- Failed parses cannot partially change the live health database; reimports use stable record IDs.
+- Sensitive exposure is checked again after permission changes; unknown future Labs metrics are conservative by default.
+- Existing report/trend/routine actions now enforce administrator access; unloaded profiles are excluded.
+- Purging expired health data also removes expired waveform chunks.
+
+### Preserved
+- Native integration settings, duplicate summary sensors, existing profile/entity IDs, approved logos and previous features.
+- ECG is not automatically collected through Labs; no private Apple APIs, extra HealthLink iOS app or medical inference.
+
 ## [0.2.1] - 2026-09-12
 
 ### Changed

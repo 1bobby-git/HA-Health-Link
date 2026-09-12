@@ -1,0 +1,26 @@
+blueprint:
+  name: HealthLink — ECG 기록 가져오기 완료
+  description: >-
+    선택한 건강 프로필에 새 ECG 기록이 실제 추가되면 사용자가 지정한 동작을 실행합니다.
+    과거 내보내기 파일의 기록 도착이며 실시간 심전도 감시나 응급 알림이 아닙니다.
+    민감한 분류·심박·파형은 이벤트에 포함하지 않습니다.
+  domain: automation
+  input:
+    profile:
+      name: 건강 프로필
+      selector:
+        config_entry:
+          integration: health_link
+    after_import:
+      name: 기록 도착 후 실행할 동작
+      description: 본인에게 기록 도착 알림 등 원하는 동작을 직접 선택하세요.
+      selector:
+        action: {}
+trigger:
+  - platform: event
+    event_type: health_link_ecg_imported
+    event_data:
+      config_entry_id: !input profile
+action: !input after_import
+mode: queued
+max: 5
