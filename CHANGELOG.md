@@ -2,6 +2,18 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.3.4] - 2026-09-13
+
+### ECG import compatibility and speed
+- Fix ECG-only import for real Apple Health `export.zip` archives whose unrelated health XML/CDA files expand beyond the previous 512 MB archive-wide limit. ECG-only mode now validates the whole archive container for unsafe paths/encryption but applies expanded-size budgets only to eligible `electrocardiograms/*.csv` members.
+- Add Korean Apple ECG CSV metadata support: `기록된 날짜`, `분류`, `증상`, `기기`, `샘플률`, `유도`, `단위`, including `헤르츠` sample-rate notation.
+- Continue ignoring patient name/date-of-birth metadata during import.
+- Keep the full Health export path unchanged and bounded; this optimization is specific to the user-selected ECG-only path.
+
+### Validation
+- Add synthetic regression tests matching the structure of a real Korean Apple ECG CSV.
+- Add a regression test proving a multi-gigabyte unrelated `export.xml` entry does not block a small ECG member in ECG-only mode.
+
 ## [0.3.3] - 2026-09-12
 
 ### Studio UI/UX

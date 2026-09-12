@@ -25,10 +25,17 @@ from .const import (
 from .coordinator import HealthLinkCoordinator
 from .models import HealthLinkRuntimeData
 from .services import async_register_services
+from . import data_features as _data_features
 from .data_features import register_data_services
+from .ecg_import_fast import read_file as _fast_health_read_file
 from .storage import HealthLinkStore
 from .webhook import async_register_bridge_webhook, async_unregister_bridge_webhook
 from .websocket import async_register_websocket_api
+
+# data_features resolves ``read_file`` at call time. Point it at the scoped
+# parser so both the native Options Flow and service action get the same fast,
+# localized ECG-only behavior without changing the full-health import path.
+_data_features.read_file = _fast_health_read_file
 
 _LOGGER = logging.getLogger(__name__)
 _PANEL_PATH = "health-link-studio"
