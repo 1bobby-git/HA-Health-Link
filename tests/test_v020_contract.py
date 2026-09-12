@@ -1,10 +1,10 @@
 import inspect
 from custom_components.health_link import sensor, services
 
-def test_healthlink_specific_sensors_are_enabled_and_raw_duplicates_are_not_new_defaults():
+def test_healthlink_specific_sensors_and_summary_duplicates_are_enabled():
     by_key={d.key:d for d in sensor.DESCRIPTIONS}
-    assert by_key["steps_today"].entity_registry_enabled_default is False
-    assert by_key["last_sleep_duration"].entity_registry_enabled_default is False
+    assert by_key["steps_today"].entity_registry_enabled_default is True
+    assert by_key["last_sleep_duration"].entity_registry_enabled_default is True
     assert by_key["steps_goal_progress"].entity_registry_enabled_default is True
     assert by_key["daily_focus"].entity_registry_enabled_default is True
 

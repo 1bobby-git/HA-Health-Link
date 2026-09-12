@@ -30,7 +30,8 @@ from .webhook import async_register_bridge_webhook, async_unregister_bridge_webh
 from .websocket import async_register_websocket_api
 
 _LOGGER = logging.getLogger(__name__)
-_PANEL_PATH = "health-link"
+_PANEL_PATH = "health-link-studio"
+_LEGACY_PANEL_PATH = "health-link"
 _STATIC_URL = "/health_link_static"
 _DATA_STATIC_READY = "frontend_static_ready"
 _DATA_PANEL_READY = "frontend_panel_ready"
@@ -59,6 +60,12 @@ async def _async_setup_frontend(hass: HomeAssistant) -> None:
         domain_data[_DATA_STATIC_READY] = True
     if domain_data.get(_DATA_PANEL_READY):
         return
+    # v0.1.x briefly used the custom panel as the integration configuration
+    # destination. Remove that registration explicitly before adding Studio as
+    # a normal sidebar-only feature panel. The integration gear must stay on
+    # Home Assistant's native Options Flow.
+    frontend.async_remove_panel(hass, _LEGACY_PANEL_PATH, warn_if_unknown=False)
+    frontend.async_remove_panel(hass, _PANEL_PATH, warn_if_unknown=False)
     await panel_custom.async_register_panel(
         hass=hass,
         frontend_url_path=_PANEL_PATH,
@@ -153,6 +160,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ]
         if not remaining:
             frontend.async_remove_panel(hass, _PANEL_PATH, warn_if_unknown=False)
+            frontend.async_remove_panel(hass, _LEGACY_PANEL_PATH, warn_if_unknown=False)
             hass.data.get(DOMAIN, {}).pop(_DATA_PANEL_READY, None)
     return unloaded
 

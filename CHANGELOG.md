@@ -2,6 +2,17 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.2.1] - 2026-09-12
+
+### Changed
+- Keep the Apple Health summary entities (steps, active energy, exercise time, sleep duration/deep/REM/efficiency) enabled by default even when equivalent Mobile App entities also exist. HealthLink intentionally keeps them because they belong to the HealthLink profile and can be used consistently with its derived context and automations.
+- On upgrade from v0.2.0, re-enable those summary entities only when Home Assistant marked them disabled by the integration; entities explicitly disabled by the user remain disabled.
+- The integration settings gear is native Home Assistant configuration only. HealthLink Studio is no longer allowed to act as the integration configuration destination.
+- Move the sidebar feature panel to `/health-link-studio` and explicitly remove the legacy `/health-link` panel registration during setup so older cached/runtime registrations cannot keep hijacking the integration settings route.
+
+### UX
+- HealthLink Studio remains available for reports, timelines, insights and Composer. Device selection, baselines, personal goals, privacy and retention are configured only through Home Assistant's native Options Flow.
+
 ## [0.2.0] - 2026-09-12
 
 ### Added

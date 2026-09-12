@@ -10,6 +10,7 @@ from homeassistant.const import EntityCategory, PERCENTAGE, UnitOfEnergy, UnitOf
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.config_entries import ConfigEntry
 
@@ -32,13 +33,13 @@ DESCRIPTIONS = (
     HealthLinkSensorDescription(key="last_sync",translation_key="last_sync",icon="mdi:sync",device_class=SensorDeviceClass.TIMESTAMP,entity_category=EntityCategory.DIAGNOSTIC,value_fn=lambda d:d.get("last_sync")),
     HealthLinkSensorDescription(key="sync_latency",translation_key="sync_latency",native_unit_of_measurement=UnitOfTime.SECONDS,icon="mdi:timer-sync-outline",entity_category=EntityCategory.DIAGNOSTIC,value_fn=lambda d:d.get("sync_latency_seconds")),
     HealthLinkSensorDescription(key="data_confidence",translation_key="data_confidence",native_unit_of_measurement=PERCENTAGE,icon="mdi:shield-check-outline",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("data_confidence")),
-    HealthLinkSensorDescription(key="steps_today",entity_registry_enabled_default=False,translation_key="steps_today",native_unit_of_measurement="steps",icon="mdi:walk",state_class=SensorStateClass.TOTAL_INCREASING,value_fn=lambda d:d.get("steps_today")),
-    HealthLinkSensorDescription(key="active_energy_today",entity_registry_enabled_default=False,translation_key="active_energy_today",native_unit_of_measurement="kcal",icon="mdi:fire",state_class=SensorStateClass.TOTAL_INCREASING,value_fn=lambda d:d.get("active_energy_today")),
-    HealthLinkSensorDescription(key="exercise_time_today",entity_registry_enabled_default=False,translation_key="exercise_time_today",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:timer-outline",state_class=SensorStateClass.TOTAL_INCREASING,value_fn=lambda d:d.get("exercise_time_today")),
-    HealthLinkSensorDescription(key="last_sleep_duration",entity_registry_enabled_default=False,translation_key="last_sleep_duration",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:sleep",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_duration")),
-    HealthLinkSensorDescription(key="last_sleep_deep",entity_registry_enabled_default=False,translation_key="last_sleep_deep",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:sleep",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_deep")),
-    HealthLinkSensorDescription(key="last_sleep_rem",entity_registry_enabled_default=False,translation_key="last_sleep_rem",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:brain",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_rem")),
-    HealthLinkSensorDescription(key="last_sleep_efficiency",entity_registry_enabled_default=False,translation_key="last_sleep_efficiency",native_unit_of_measurement=PERCENTAGE,icon="mdi:bed-clock",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_efficiency")),
+    HealthLinkSensorDescription(key="steps_today",translation_key="steps_today",native_unit_of_measurement="steps",icon="mdi:walk",state_class=SensorStateClass.TOTAL_INCREASING,value_fn=lambda d:d.get("steps_today")),
+    HealthLinkSensorDescription(key="active_energy_today",translation_key="active_energy_today",native_unit_of_measurement="kcal",icon="mdi:fire",state_class=SensorStateClass.TOTAL_INCREASING,value_fn=lambda d:d.get("active_energy_today")),
+    HealthLinkSensorDescription(key="exercise_time_today",translation_key="exercise_time_today",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:timer-outline",state_class=SensorStateClass.TOTAL_INCREASING,value_fn=lambda d:d.get("exercise_time_today")),
+    HealthLinkSensorDescription(key="last_sleep_duration",translation_key="last_sleep_duration",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:sleep",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_duration")),
+    HealthLinkSensorDescription(key="last_sleep_deep",translation_key="last_sleep_deep",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:sleep",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_deep")),
+    HealthLinkSensorDescription(key="last_sleep_rem",translation_key="last_sleep_rem",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:brain",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_rem")),
+    HealthLinkSensorDescription(key="last_sleep_efficiency",translation_key="last_sleep_efficiency",native_unit_of_measurement=PERCENTAGE,icon="mdi:bed-clock",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_efficiency")),
     HealthLinkSensorDescription(key="recovery_context",translation_key="recovery_context",icon="mdi:battery-heart-variant",value_fn=lambda d:d.get("recovery_context")),
     HealthLinkSensorDescription(key="recovery_confidence",translation_key="recovery_confidence",native_unit_of_measurement=PERCENTAGE,icon="mdi:shield-check-outline",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("recovery_confidence")),
     HealthLinkSensorDescription(key="hrv_vs_baseline",translation_key="hrv_vs_baseline",native_unit_of_measurement=PERCENTAGE,icon="mdi:heart-pulse",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("hrv_vs_baseline")),
@@ -53,7 +54,27 @@ CORE_TYPES={
     "companion.health_sleep_deep","companion.health_sleep_rem",
 }
 
+# v0.2.0 temporarily changed these entities to disabled-by-default. Restore only
+# entries disabled by the integration itself; a user's explicit disabled choice
+# must always win.
+DUPLICATE_SUMMARY_KEYS=frozenset({
+    "steps_today","active_energy_today","exercise_time_today",
+    "last_sleep_duration","last_sleep_deep","last_sleep_rem",
+    "last_sleep_efficiency",
+})
+
+def _reenable_integration_disabled_summaries(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    registry=er.async_get(hass)
+    for key in DUPLICATE_SUMMARY_KEYS:
+        entity_id=registry.async_get_entity_id("sensor",DOMAIN,f"{entry.entry_id}_{key}")
+        if not entity_id:
+            continue
+        registry_entry=registry.async_get(entity_id)
+        if registry_entry and registry_entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION:
+            registry.async_update_entity(entity_id,disabled_by=None)
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+    _reenable_integration_disabled_summaries(hass,entry)
     runtime:HealthLinkRuntimeData=entry.runtime_data
     entities:list[SensorEntity]=[HealthLinkSensor(runtime,entry,d) for d in DESCRIPTIONS]
     for info in await runtime.store.async_exposed_types():
