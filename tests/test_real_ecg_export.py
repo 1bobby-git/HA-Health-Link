@@ -34,7 +34,7 @@ def test_korean_apple_ecg_csv_metadata_and_waveform():
     assert record['payload']['sampling_frequency_hz'] == 512.555
     assert record['payload']['lead'] == '유도 I'
     assert record['source']['name'] == 'Watch4,3'
-    assert chunk['points'][0][1] == -0.219406
+    assert abs(chunk['points'][0][1] - (-0.219406)) < 1e-12
     assert 'REMOVED' not in str(items)
 
 
