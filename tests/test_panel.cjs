@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../custom_components/health_link/frontend/health-link-panel.js'), 'utf8');
+const modernSource = fs.readFileSync(path.join(__dirname, '../custom_components/health_link/frontend/health-link-panel-modern.js'), 'utf8');
 function panel() {
   let Panel;
   const context = {
@@ -63,4 +64,21 @@ test('token failure uses bundled public artwork rather than an external app',asy
   const p=panel();p._callWS=async()=>{throw Error('offline');};await p._loadBrand();
   assert.equal(p._logoSource(),'/health_link_static/brand/logo.png?v=0.1.5');
   p.disconnectedCallback();assert.equal(p._active,false);assert.equal(p._refreshTimer,null);
+});
+
+test('modern Studio keeps small radii and clearer information hierarchy',()=>{
+  assert.match(modernSource,/--hl-radius-lg:12px/);
+  assert.match(modernSource,/--hl-radius-md:10px/);
+  assert.match(modernSource,/--hl-radius-sm:8px/);
+  assert.match(modernSource,/오늘 요약/);
+  assert.match(modernSource,/분석 준비도/);
+  assert.match(modernSource,/최근 인사이트/);
+  assert.match(modernSource,/빠른 작업/);
+  assert.match(modernSource,/ECG·건강 원본 가져오기/);
+});
+
+test('modern Studio keeps settings separate and uses native integration routes',()=>{
+  assert.match(modernSource,/\/config\/integrations\/integration\/health_link/);
+  assert.match(modernSource,/\/config\/integrations\/dashboard\/add\?domain=health_link/);
+  assert.doesNotMatch(modernSource,/config_panel_domain/);
 });

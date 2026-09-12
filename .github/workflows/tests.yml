@@ -35,4 +35,5 @@ jobs:
         with:
           node-version: "24"
       - run: node --check custom_components/health_link/frontend/health-link-panel.js
+      - run: node --check custom_components/health_link/frontend/health-link-panel-modern.js
       - run: node --test tests/test_panel.cjs

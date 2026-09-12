@@ -2,6 +2,21 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.3.3] - 2026-09-12
+
+### Studio UI/UX
+- Redesign HealthLink Studio with a clearer dashboard hierarchy based on user feedback: **Today summary → goals/data status → recent insight/quick actions**.
+- Reduce the visual radius to 12px/10px/8px for cards, controls and nested rows, replacing the overly rounded card-heavy appearance.
+- Replace the filled active-tab pill with a lighter underline navigation and simplify header controls for profile selection, refresh, profile add and native settings.
+- Rename technical labels on the Today view to easier concepts such as **회복 신호 (Recovery signal)** and **분석 준비도 (Data readiness)** while preserving the original underlying values.
+- Add progress bars and current/target values for configured personal goals, plus explicit empty states when a goal or sufficient data is unavailable.
+- Add **Recent insight** and **Quick actions** sections so users can understand what the current data means and jump directly to health data, Composer, connection status, or native ECG/Health import settings.
+- Improve responsive layouts for tablet/mobile and reduce unnecessary shadows while retaining Home Assistant theme variables and keyboard focus states.
+
+### Architecture
+- Keep the existing HealthLink panel logic intact and load a small modern presentation module on top, reducing regression risk to profile isolation, Composer, timeline, insights and data explorer behavior.
+- Keep integration settings in the native Home Assistant Options Flow; Studio remains a feature/dashboard surface only.
+
 ## [0.3.2] - 2026-09-12
 
 ### Fixed
