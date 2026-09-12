@@ -4,41 +4,41 @@
     "step": {
       "user": {
         "title": "HealthLink 시작하기",
-        "description": "Home Assistant에 등록된 iPhone을 찾습니다. Apple 건강 센서(Labs)를 아직 켜지 않은 기기도 표시됩니다. 감지된 기기: {device_count}개, 다른 프로필에 연결되지 않은 기기: {available_device_count}개. 사람마다 프로필을 만들고 같은 사람의 iPhone만 선택하세요. 기기가 없으면 프로필을 먼저 만든 후 설정에서 연결할 수 있습니다.",
+        "description": "이 Home Assistant 서버에 공식 Companion 앱으로 등록된 iOS/iPadOS 기기(iPhone/iPad)를 찾습니다. Apple 건강 센서(Labs)를 아직 켜지 않은 기기도 표시됩니다. 감지된 기기: {device_count}개, 다른 프로필에 연결되지 않은 기기: {available_device_count}개. 사람마다 건강 프로필을 만들고 그 사람의 Apple 기기만 선택하세요.",
         "data": {
           "profile_name": "건강 프로필 이름",
-          "companion_device_ids": "이 프로필에 연결할 iPhone"
+          "companion_device_ids": "건강 데이터를 가져올 Apple 기기"
         },
         "data_description": {
           "profile_name": "예: 내 건강, 원바비",
-          "companion_device_ids": "HA 사용자 계정 목록이 아니라 등록된 iPhone 목록입니다. 건강 데이터 수집은 각 iPhone에서 Labs 센서와 읽기 권한을 허용한 후 시작됩니다."
+          "companion_device_ids": "HA 사용자 계정 목록이 아니라 이 서버에 Companion 앱으로 등록된 iPhone/iPad 목록입니다. Apple Watch는 직접 선택하지 않습니다. Watch의 건강 기록은 HealthKit을 통해 선택한 기기의 Apple 건강 데이터에 포함될 수 있습니다."
         }
       }
     },
     "error": {
       "profile_name_required": "프로필 이름을 입력하세요.",
-      "device_already_used": "선택한 iPhone 중 하나 이상이 이미 다른 HealthLink 건강 프로필에 연결되어 있습니다.",
-      "select_device": "이 프로필에 연결할 본인의 iPhone을 선택하세요.",
-      "device_not_found": "선택한 기기를 현재 찾을 수 없습니다. 목록을 다시 확인하세요."
+      "device_already_used": "선택한 Apple 기기 중 하나 이상이 이미 다른 HealthLink 건강 프로필에 연결되어 있습니다.",
+      "select_device": "이 프로필 본인의 iPhone/iPad를 선택하세요.",
+      "device_not_found": "선택한 기기를 현재 찾을 수 없습니다. 공식 Home Assistant 앱이 같은 HA 서버에 등록되어 있는지 확인하세요."
     },
     "abort": {
-      "already_configured": "선택한 iPhone은 이미 HealthLink에 연결되어 있습니다."
+      "already_configured": "선택한 Apple 기기는 이미 HealthLink에 연결되어 있습니다."
     }
   },
   "options": {
     "step": {
       "general": {
-        "title": "일반 설정",
-        "description": "이 화면은 Home Assistant 표준 통합 설정입니다. HealthLink Studio는 별도의 사이드바 화면이며 별도 앱이 아닙니다. 같은 사람의 iPhone이 여러 대라면 이 프로필에 함께 선택할 수 있습니다.",
+        "title": "기기·목표·개인정보 설정",
+        "description": "이 화면은 Home Assistant 표준 통합 설정입니다. HealthLink Studio는 별도의 사이드바 기능 화면입니다. 같은 사람의 iPhone/iPad가 여러 대라면 한 프로필에 함께 선택할 수 있습니다. 다른 사람의 기기는 별도 건강 프로필로 분리하세요.",
         "data": {
           "baseline_window": "개인 기준선 기간(일)",
           "stale_hours": "데이터 지연 경고(시간)",
           "enable_composer": "센서 만들기(Health Composer)",
           "enable_context": "건강·집 컨텍스트 분석",
-          "companion_device_ids": "연결할 iPhone"
+          "companion_device_ids": "연결할 Apple 기기"
         },
         "data_description": {
-          "companion_device_ids": "같은 사람의 여러 iPhone을 한 프로필에 묶을 수 있습니다. 다른 사람의 기기는 별도 건강 프로필에 연결하세요."
+          "companion_device_ids": "이 HA 서버에 공식 Companion 앱으로 등록된 iOS/iPadOS 기기입니다. Apple Watch 자체는 선택 대상이 아닙니다."
         }
       },
       "privacy": {
@@ -78,9 +78,9 @@
       },
       "import_data": {
         "title": "건강 원본·ECG 가져오기",
-        "description": "대상: {profile}. Apple 건강의 export.zip/export.xml, 지원하는 ECG CSV 또는 JSON을 선택하세요(최대 100 MB). ECG는 Labs가 자동 전송하지 않습니다. ECG·기타 민감 자료를 가져오려면 먼저 기기·목표·개인정보 설정에서 민감 건강 항목을 허용하세요. 선택한 파일은 로컬에서 처리 후 삭제되며, 가져온 기록은 이 프로필에 보관됩니다. 다른 가족의 파일을 선택하지 마세요.",
+        "description": "가장 쉬운 방법: iPhone/iPad의 건강 앱 → 프로필 사진 → 모든 건강 데이터 내보내기 → 내보내기 → 파일에 저장에서 export.zip을 만든 뒤 여기서 선택하세요. 대상 프로필: {profile}. ECG는 현재 Labs가 자동 전송하지 않으므로 ECG 기록이 들어 있는 원본 파일이 필요합니다. ECG·기타 민감 자료를 가져오려면 먼저 개인정보 설정에서 민감 건강 항목을 허용하세요. 의사 제출용 ECG PDF는 파형 원본 가져오기 형식이 아닙니다. 파일은 로컬에서 처리한 뒤 삭제됩니다.",
         "data": {
-          "file_id": "파일 선택",
+          "file_id": "export.zip / 건강 원본 파일 선택",
           "scope": "가져올 범위",
           "include_sensitive": "ECG 등 민감 자료 포함",
           "confirm_profile": "이 프로필 본인의 자료임을 확인함"
@@ -92,9 +92,9 @@
       }
     },
     "error": {
-      "device_already_used": "선택한 iPhone 중 하나 이상이 이미 다른 HealthLink 건강 프로필에 연결되어 있습니다.",
-      "select_device": "이 프로필에 연결할 본인의 iPhone을 선택하세요.",
-      "device_not_found": "선택한 기기를 현재 찾을 수 없습니다. 목록을 다시 확인하세요.",
+      "device_already_used": "선택한 Apple 기기 중 하나 이상이 이미 다른 HealthLink 건강 프로필에 연결되어 있습니다.",
+      "select_device": "이 프로필 본인의 iPhone/iPad를 선택하세요.",
+      "device_not_found": "선택한 기기를 현재 찾을 수 없습니다. 공식 Home Assistant 앱이 같은 HA 서버에 등록되어 있는지 확인하세요.",
       "confirm_profile_required": "본인 프로필의 자료인지 확인해 주세요.",
       "sensitive_disabled": "먼저 개인정보 설정에서 민감 건강 항목을 허용하세요.",
       "invalid_metric_selection": "현재 표시된 건강 항목을 선택해 주세요."
@@ -104,118 +104,50 @@
     },
     "abort": {
       "profile_unavailable": "프로필이 로드되지 않았습니다. 기존 설정을 확인한 뒤 다시 시도하세요.",
-      "no_discovered_metrics": "아직 추가로 노출할 건강 항목이 없습니다. iPhone에서 건강 센서를 켜거나 건강 원본 파일을 먼저 가져오세요.",
+      "no_discovered_metrics": "아직 추가로 노출할 건강 항목이 없습니다. 선택한 Apple 기기에서 Apple 건강 센서(Labs)를 켜거나 건강 원본 파일을 먼저 가져오세요.",
       "health_import_failed": "가져오지 못했습니다. 오류 코드: {error}. 파일 형식·크기·날짜·단위·민감자료 허용을 확인하세요."
     }
   },
   "entity": {
     "sensor": {
-      "last_sync": {
-        "name": "최근 동기화"
-      },
-      "sync_latency": {
-        "name": "동기화 지연"
-      },
-      "data_confidence": {
-        "name": "데이터 신뢰도"
-      },
-      "steps_today": {
-        "name": "오늘 걸음"
-      },
-      "active_energy_today": {
-        "name": "오늘 활동 에너지"
-      },
-      "exercise_time_today": {
-        "name": "오늘 운동 시간"
-      },
-      "last_sleep_duration": {
-        "name": "최근 수면 시간"
-      },
-      "last_sleep_deep": {
-        "name": "최근 깊은 수면"
-      },
-      "last_sleep_rem": {
-        "name": "최근 REM 수면"
-      },
-      "last_sleep_efficiency": {
-        "name": "최근 수면 효율"
-      },
-      "recovery_context": {
-        "name": "회복 컨텍스트"
-      },
-      "recovery_confidence": {
-        "name": "회복 컨텍스트 신뢰도"
-      },
-      "hrv_vs_baseline": {
-        "name": "HRV 개인 기준선 대비"
-      },
-      "resting_hr_vs_baseline": {
-        "name": "안정 심박 개인 기준선 대비"
-      },
-      "sleep_vs_baseline": {
-        "name": "수면 개인 기준선 대비"
-      },
-      "activity_vs_baseline": {
-        "name": "활동 개인 기준선 대비"
-      },
-      "steps_goal_progress": {
-        "name": "걸음 목표 진행률"
-      },
-      "exercise_goal_progress": {
-        "name": "운동 시간 목표 진행률"
-      },
-      "active_energy_goal_progress": {
-        "name": "활동 에너지 목표 진행률"
-      },
-      "water_goal_progress": {
-        "name": "물 기록 목표 진행률"
-      },
-      "sleep_goal_progress": {
-        "name": "수면 목표 진행률"
-      },
-      "steps_vs_same_time_baseline": {
-        "name": "같은 시간대 평소 대비 걸음"
-      },
-      "daily_goal_context": {
-        "name": "오늘 목표 컨텍스트"
-      },
-      "daily_focus": {
-        "name": "오늘의 생활 포커스"
-      },
-      "ecg_record_count": {
-        "name": "ECG 기록 수"
-      },
-      "ecg_last_recorded": {
-        "name": "마지막 ECG 측정 시각"
-      },
-      "ecg_classification": {
-        "name": "ECG 원본 분류 결과"
-      },
-      "ecg_average_heart_rate": {
-        "name": "ECG 평균 심박"
-      },
-      "ecg_point_count": {
-        "name": "ECG 파형 측정 수"
-      },
-      "ecg_duration": {
-        "name": "ECG 기록 길이"
-      }
+      "last_sync": {"name": "최근 동기화"},
+      "sync_latency": {"name": "동기화 지연"},
+      "data_confidence": {"name": "데이터 신뢰도"},
+      "steps_today": {"name": "오늘 걸음"},
+      "active_energy_today": {"name": "오늘 활동 에너지"},
+      "exercise_time_today": {"name": "오늘 운동 시간"},
+      "last_sleep_duration": {"name": "최근 수면 시간"},
+      "last_sleep_deep": {"name": "최근 깊은 수면"},
+      "last_sleep_rem": {"name": "최근 REM 수면"},
+      "last_sleep_efficiency": {"name": "최근 수면 효율"},
+      "recovery_context": {"name": "회복 컨텍스트"},
+      "recovery_confidence": {"name": "회복 컨텍스트 신뢰도"},
+      "hrv_vs_baseline": {"name": "HRV 개인 기준선 대비"},
+      "resting_hr_vs_baseline": {"name": "안정 심박 개인 기준선 대비"},
+      "sleep_vs_baseline": {"name": "수면 개인 기준선 대비"},
+      "activity_vs_baseline": {"name": "활동 개인 기준선 대비"},
+      "steps_goal_progress": {"name": "걸음 목표 진행률"},
+      "exercise_goal_progress": {"name": "운동 시간 목표 진행률"},
+      "active_energy_goal_progress": {"name": "활동 에너지 목표 진행률"},
+      "water_goal_progress": {"name": "물 기록 목표 진행률"},
+      "sleep_goal_progress": {"name": "수면 목표 진행률"},
+      "steps_vs_same_time_baseline": {"name": "같은 시간대 평소 대비 걸음"},
+      "daily_goal_context": {"name": "오늘 목표 컨텍스트"},
+      "daily_focus": {"name": "오늘의 생활 포커스"},
+      "ecg_record_count": {"name": "ECG 기록 수"},
+      "ecg_last_recorded": {"name": "마지막 ECG 측정 시각"},
+      "ecg_classification": {"name": "ECG 원본 분류 결과"},
+      "ecg_average_heart_rate": {"name": "ECG 평균 심박"},
+      "ecg_point_count": {"name": "ECG 파형 측정 수"},
+      "ecg_duration": {"name": "ECG 기록 길이"}
     },
     "binary_sensor": {
-      "data_stale": {
-        "name": "건강 데이터 지연"
-      },
-      "recovery_below_baseline": {
-        "name": "회복 상태가 평소보다 낮음"
-      },
-      "configured_goals_reached": {
-        "name": "설정한 오늘 목표 달성"
-      }
+      "data_stale": {"name": "건강 데이터 지연"},
+      "recovery_below_baseline": {"name": "회복 상태가 평소보다 낮음"},
+      "configured_goals_reached": {"name": "설정한 오늘 목표 달성"}
     },
     "image": {
-      "ecg_waveform": {
-        "name": "ECG 파형 미리보기"
-      }
+      "ecg_waveform": {"name": "ECG 파형 미리보기"}
     }
   }
 }

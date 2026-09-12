@@ -4,41 +4,41 @@
     "step": {
       "user": {
         "title": "Set up HealthLink",
-        "description": "Registered iPhones are listed even before Apple Health Sensors (Labs) is enabled. Found: {device_count}; unassigned: {available_device_count}. Create a profile per person and select only their phones. If no phone is available, create a waiting profile and connect it later in settings.",
+        "description": "HealthLink lists iOS/iPadOS devices (iPhone/iPad) registered to this Home Assistant server through the official Companion app. Devices are shown even before Apple Health Sensors (Labs) is enabled. Found: {device_count}; unassigned: {available_device_count}. Create one health profile per person and select only that person's Apple devices.",
         "data": {
           "profile_name": "Health profile name",
-          "companion_device_ids": "iPhones for this profile"
+          "companion_device_ids": "Apple devices to read health data from"
         },
         "data_description": {
           "profile_name": "For example: My Health",
-          "companion_device_ids": "This lists registered iPhones, not HA login accounts. Health collection starts only after Labs sensors and health read access are enabled on each phone."
+          "companion_device_ids": "This is a list of iPhones/iPads registered through the Companion app, not Home Assistant user accounts. Apple Watch is not selected directly; Watch health records may appear through HealthKit on the selected device."
         }
       }
     },
     "error": {
       "profile_name_required": "Enter a profile name.",
-      "device_already_used": "One or more selected iPhones already belong to another HealthLink profile.",
-      "select_device": "Choose the iPhone(s) belonging to this profile.",
-      "device_not_found": "A selected device is no longer available. Check the list again."
+      "device_already_used": "One or more selected Apple devices already belong to another HealthLink profile.",
+      "select_device": "Choose the iPhone/iPad belonging to this profile.",
+      "device_not_found": "The selected device is no longer available. Confirm the official Home Assistant app is registered to this same HA server."
     },
     "abort": {
-      "already_configured": "The selected iPhone is already connected to HealthLink."
+      "already_configured": "The selected Apple device is already connected to HealthLink."
     }
   },
   "options": {
     "step": {
       "general": {
-        "title": "General settings",
-        "description": "This is the standard Home Assistant integration settings flow. HealthLink Studio is a separate Home Assistant sidebar panel, not a separate app. Multiple iPhones owned by the same person can be selected together.",
+        "title": "Devices, goals and privacy",
+        "description": "This is the standard Home Assistant integration settings flow. HealthLink Studio is a separate sidebar feature panel. Multiple iPhones/iPads owned by the same person can be selected together; use a separate health profile for another person.",
         "data": {
           "baseline_window": "Personal baseline window (days)",
           "stale_hours": "Stale data warning (hours)",
           "enable_composer": "Health Composer",
           "enable_context": "Health + home context analysis",
-          "companion_device_ids": "Connected iPhones"
+          "companion_device_ids": "Connected Apple devices"
         },
         "data_description": {
-          "companion_device_ids": "Group multiple iPhones for the same person in this profile. Connect another person's phone to a separate HealthLink profile."
+          "companion_device_ids": "iOS/iPadOS devices registered to this HA server through the official Companion app. Apple Watch itself is not a selectable device."
         }
       },
       "privacy": {
@@ -78,9 +78,9 @@
       },
       "import_data": {
         "title": "Import health records and ECG",
-        "description": "Target: {profile}. Select Apple Health export.zip/export.xml, supported ECG CSV or JSON (100 MB maximum). Labs does not automatically send ECG. Enable sensitive data in privacy settings before importing ECG or other sensitive records. Files are processed locally and removed; records remain in this profile. Do not select another person's file.",
+        "description": "Easiest path: on iPhone/iPad open Health → profile picture → Export All Health Data → Export → Save to Files, then select the resulting export.zip here. Target profile: {profile}. Labs does not currently send ECG automatically, so ECG requires a source file that actually contains ECG records. Enable sensitive health data first when importing ECG. A doctor-sharing ECG PDF is not a raw waveform import format. Uploaded files are processed locally and then deleted.",
         "data": {
-          "file_id": "Select file",
+          "file_id": "Select export.zip or health source file",
           "scope": "Import scope",
           "include_sensitive": "Include sensitive records including ECG",
           "confirm_profile": "I confirm these records belong to this profile"
@@ -92,9 +92,9 @@
       }
     },
     "error": {
-      "device_already_used": "One or more selected iPhones already belong to another HealthLink profile.",
-      "select_device": "Choose the iPhone(s) belonging to this profile.",
-      "device_not_found": "A selected device is no longer available. Check the list again.",
+      "device_already_used": "One or more selected Apple devices already belong to another HealthLink profile.",
+      "select_device": "Choose the iPhone/iPad belonging to this profile.",
+      "device_not_found": "The selected device is no longer available. Confirm the official Home Assistant app is registered to this same HA server.",
       "confirm_profile_required": "Confirm the records belong to this profile.",
       "sensitive_disabled": "Enable sensitive health metrics in privacy settings first.",
       "invalid_metric_selection": "Choose a metric listed in this form."
@@ -104,118 +104,50 @@
     },
     "abort": {
       "profile_unavailable": "Profile is not loaded. Check its setup and retry.",
-      "no_discovered_metrics": "No additional metrics are available. Enable iPhone health sensors or import a health export first.",
+      "no_discovered_metrics": "No additional metrics are available. Enable Apple Health Sensors (Labs) on a selected Apple device or import a health export first.",
       "health_import_failed": "Import failed. Error code: {error}. Check file format, size, timestamps, units and sensitive-data permission."
     }
   },
   "entity": {
     "sensor": {
-      "last_sync": {
-        "name": "Last sync"
-      },
-      "sync_latency": {
-        "name": "Sync latency"
-      },
-      "data_confidence": {
-        "name": "Data confidence"
-      },
-      "steps_today": {
-        "name": "Steps today"
-      },
-      "active_energy_today": {
-        "name": "Active energy today"
-      },
-      "exercise_time_today": {
-        "name": "Exercise time today"
-      },
-      "last_sleep_duration": {
-        "name": "Last sleep duration"
-      },
-      "last_sleep_deep": {
-        "name": "Last deep sleep"
-      },
-      "last_sleep_rem": {
-        "name": "Last REM sleep"
-      },
-      "last_sleep_efficiency": {
-        "name": "Last sleep efficiency"
-      },
-      "recovery_context": {
-        "name": "Recovery context"
-      },
-      "recovery_confidence": {
-        "name": "Recovery context confidence"
-      },
-      "hrv_vs_baseline": {
-        "name": "HRV vs personal baseline"
-      },
-      "resting_hr_vs_baseline": {
-        "name": "Resting heart rate vs personal baseline"
-      },
-      "sleep_vs_baseline": {
-        "name": "Sleep vs personal baseline"
-      },
-      "activity_vs_baseline": {
-        "name": "Activity vs personal baseline"
-      },
-      "steps_goal_progress": {
-        "name": "Steps goal progress"
-      },
-      "exercise_goal_progress": {
-        "name": "Exercise goal progress"
-      },
-      "active_energy_goal_progress": {
-        "name": "Active energy goal progress"
-      },
-      "water_goal_progress": {
-        "name": "Recorded water goal progress"
-      },
-      "sleep_goal_progress": {
-        "name": "Sleep goal progress"
-      },
-      "steps_vs_same_time_baseline": {
-        "name": "Steps vs same-time baseline"
-      },
-      "daily_goal_context": {
-        "name": "Daily goal context"
-      },
-      "daily_focus": {
-        "name": "Daily wellness focus"
-      },
-      "ecg_record_count": {
-        "name": "ECG record count"
-      },
-      "ecg_last_recorded": {
-        "name": "Last ECG recorded"
-      },
-      "ecg_classification": {
-        "name": "ECG source classification"
-      },
-      "ecg_average_heart_rate": {
-        "name": "ECG average heart rate"
-      },
-      "ecg_point_count": {
-        "name": "ECG voltage measurement count"
-      },
-      "ecg_duration": {
-        "name": "ECG record duration"
-      }
+      "last_sync": {"name": "Last sync"},
+      "sync_latency": {"name": "Sync latency"},
+      "data_confidence": {"name": "Data confidence"},
+      "steps_today": {"name": "Steps today"},
+      "active_energy_today": {"name": "Active energy today"},
+      "exercise_time_today": {"name": "Exercise time today"},
+      "last_sleep_duration": {"name": "Last sleep duration"},
+      "last_sleep_deep": {"name": "Last deep sleep"},
+      "last_sleep_rem": {"name": "Last REM sleep"},
+      "last_sleep_efficiency": {"name": "Last sleep efficiency"},
+      "recovery_context": {"name": "Recovery context"},
+      "recovery_confidence": {"name": "Recovery context confidence"},
+      "hrv_vs_baseline": {"name": "HRV vs personal baseline"},
+      "resting_hr_vs_baseline": {"name": "Resting heart rate vs personal baseline"},
+      "sleep_vs_baseline": {"name": "Sleep vs personal baseline"},
+      "activity_vs_baseline": {"name": "Activity vs personal baseline"},
+      "steps_goal_progress": {"name": "Steps goal progress"},
+      "exercise_goal_progress": {"name": "Exercise goal progress"},
+      "active_energy_goal_progress": {"name": "Active energy goal progress"},
+      "water_goal_progress": {"name": "Recorded water goal progress"},
+      "sleep_goal_progress": {"name": "Sleep goal progress"},
+      "steps_vs_same_time_baseline": {"name": "Steps vs same-time baseline"},
+      "daily_goal_context": {"name": "Daily goal context"},
+      "daily_focus": {"name": "Daily wellness focus"},
+      "ecg_record_count": {"name": "ECG record count"},
+      "ecg_last_recorded": {"name": "Last ECG recorded"},
+      "ecg_classification": {"name": "ECG source classification"},
+      "ecg_average_heart_rate": {"name": "ECG average heart rate"},
+      "ecg_point_count": {"name": "ECG voltage measurement count"},
+      "ecg_duration": {"name": "ECG record duration"}
     },
     "binary_sensor": {
-      "data_stale": {
-        "name": "Health data stale"
-      },
-      "recovery_below_baseline": {
-        "name": "Recovery below baseline"
-      },
-      "configured_goals_reached": {
-        "name": "Configured daily goals reached"
-      }
+      "data_stale": {"name": "Health data stale"},
+      "recovery_below_baseline": {"name": "Recovery below baseline"},
+      "configured_goals_reached": {"name": "Configured daily goals reached"}
     },
     "image": {
-      "ecg_waveform": {
-        "name": "ECG waveform preview"
-      }
+      "ecg_waveform": {"name": "ECG waveform preview"}
     }
   }
 }
