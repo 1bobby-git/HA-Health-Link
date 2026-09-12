@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import sqlite3
 import tempfile
+from time import monotonic
 from typing import Any, Iterable
 
 import voluptuous as vol
@@ -110,12 +111,24 @@ def _import_sync(store, records, include_sensitive: bool, scope: str) -> dict[st
 
     Parsing errors cannot leave a half-imported profile. The staging database is
     removed on success/failure; no uploaded file, waveform or name is published.
+    Temporary staging deliberately disables its own durability journal because the
+    staging database is disposable; the live HealthLink transaction remains atomic.
     """
     skipped_sensitive = skipped_unsupported = total_points = visited = 0
     with tempfile.TemporaryDirectory(prefix="healthlink-import-") as directory:
         stage_path = Path(directory) / "stage.db"
         with closing(sqlite3.connect(stage_path)) as stage:
-            stage.execute("CREATE TABLE records(identity TEXT PRIMARY KEY,kind TEXT,payload TEXT)")
+            stage.executescript(
+                "PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA temp_store=MEMORY;"
+                "CREATE TABLE records(identity TEXT PRIMARY KEY,kind TEXT,payload TEXT);"
+            )
+            batch: list[tuple[str, str, str]] = []
+
+            def flush_batch() -> None:
+                if batch:
+                    stage.executemany("INSERT OR IGNORE INTO records VALUES(?,?,?)", batch)
+                    batch.clear()
+
             for item in records:
                 visited += 1
                 if visited > MAX_RECORDS:
@@ -138,12 +151,16 @@ def _import_sync(store, records, include_sensitive: bool, scope: str) -> dict[st
                 else:
                     identity = item["sample_uuid"]
                 encoded = json.dumps(item, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
-                stage.execute("INSERT OR IGNORE INTO records VALUES(?,?,?)", (identity, item["object_kind"], encoded))
+                batch.append((identity, item["object_kind"], encoded))
+                if len(batch) >= 1000:
+                    flush_batch()
+            flush_batch()
             stage.commit()
             count = stage.execute("SELECT COUNT(*) FROM records").fetchone()[0]
             if not count:
                 return {"inserted": 0, "updated": 0, "skipped_sensitive": skipped_sensitive,
-                        "skipped_unsupported": skipped_unsupported, "ecg_new": 0, "empty": True}
+                        "skipped_unsupported": skipped_unsupported, "ecg_new": 0, "empty": True,
+                        "records_scanned": visited, "ecg_points": total_points}
             kinds = dict(stage.execute("SELECT kind,COUNT(*) FROM records GROUP BY kind"))
             new_ecgs = []
             with closing(store._connect()) as current:
@@ -160,7 +177,8 @@ def _import_sync(store, records, include_sensitive: bool, scope: str) -> dict[st
             result.update({"skipped_sensitive": skipped_sensitive, "skipped_unsupported": skipped_unsupported,
                            "ecg_new": len(new_ecgs), "ecg_records": kinds.get("ecg", 0),
                            "quantity_records": kinds.get("quantity", 0), "category_records": kinds.get("category", 0),
-                           "workout_records": kinds.get("workout", 0), "empty": False})
+                           "workout_records": kinds.get("workout", 0), "empty": False,
+                           "records_scanned": visited, "ecg_points": total_points})
             with closing(store._connect()) as con, con:
                 con.execute("INSERT INTO meta(profile_id,key,value) VALUES(?,?,?) ON CONFLICT(profile_id,key) DO UPDATE SET value=excluded.value",
                             (store.profile_id, "last_import_result", json.dumps(result)))
@@ -196,6 +214,7 @@ async def import_uploaded(hass: HomeAssistant, entry, file_id: str, *, include_s
     if lock.locked():
         raise HealthImportError("import_in_progress")
     store = entry.runtime_data.store
+    started = monotonic()
     def process():
         with process_uploaded_file(hass, file_id) as path:
             return _import_sync(store, read_file(path, scope), include_sensitive, scope)
@@ -207,7 +226,9 @@ async def import_uploaded(hass: HomeAssistant, entry, file_id: str, *, include_s
         except Exception as err:
             # Never return filenames, XML fragments or original medical data in errors.
             raise HealthImportError("invalid_import_file") from err
-    await store.async_audit("import_health_file", object_type="local_file")
+    result["scope"] = scope
+    result["elapsed_seconds"] = round(monotonic() - started, 1)
+    await store.async_audit("import_health_file", object_type=f"local_file:{scope}")
     await entry.runtime_data.coordinator.async_refresh_from_store()
     hass.bus.async_fire(IMPORT_EVENT, {"config_entry_id": entry.entry_id, **result})
     if result["ecg_new"]:
