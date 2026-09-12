@@ -181,7 +181,7 @@ class CompanionImporter:
         self._entity_map = mapping
         self._pending = {key: item for key, item in self._pending.items() if key in mapping}
 
-        if not import_now:
+        if not import_now or self._bulk_import_running():
             return
 
         items = []
@@ -286,7 +286,22 @@ class CompanionImporter:
         self._flush_unsub = None
         self.hass.async_create_task(self._async_flush_pending())
 
+    def _bulk_import_running(self) -> bool:
+        """Avoid competing SQLite writes during an atomic historical import."""
+        lock = getattr(self.hass, "data", {}).get(DOMAIN, {}).get("import_locks", {}).get(
+            self.runtime.coordinator.entry.entry_id
+        )
+        return lock is not None and lock.locked()
+
     async def _async_flush_pending(self) -> None:
+        if self._bulk_import_running():
+            # Retain just the latest value per entity while the import commits.
+            # It is flushed normally once the import lock has been released.
+            if self._flush_unsub is None:
+                self._flush_unsub = async_call_later(
+                    self.hass, _FLUSH_DELAY_SECONDS, self._scheduled_flush
+                )
+            return
         pending = list(self._pending.values())
         self._pending.clear()
         items = [
@@ -317,7 +332,7 @@ class CompanionImporter:
             "unit_of_measurement"
         )
         aggregation = known.aggregation if known else "latest"
-        privacy = known.privacy_class if known else "wellness"
+        privacy = known.privacy_class if known else "sensitive"
         display = (
             known.name
             if known

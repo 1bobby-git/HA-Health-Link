@@ -167,6 +167,24 @@ def _import_sync(store, records, include_sensitive: bool, scope: str) -> dict[st
             return result
 
 
+async def _finish_worker(future):
+    """Keep the import lock until a non-cancellable executor job has finished."""
+    try:
+        return await asyncio.shield(future)
+    except asyncio.CancelledError:
+        while not future.done():
+            try:
+                await asyncio.shield(future)
+            except asyncio.CancelledError:
+                continue
+            except Exception:
+                break
+        if future.done() and not future.cancelled():
+            # Consume a worker error without replacing the caller cancellation.
+            future.exception()
+        raise
+
+
 async def import_uploaded(hass: HomeAssistant, entry, file_id: str, *, include_sensitive: bool = False,
                           scope: str = "all") -> dict[str, Any]:
     if not profile_loaded(entry):
@@ -183,7 +201,7 @@ async def import_uploaded(hass: HomeAssistant, entry, file_id: str, *, include_s
             return _import_sync(store, read_file(path, scope), include_sensitive, scope)
     async with lock:
         try:
-            result = await hass.async_add_executor_job(process)
+            result = await _finish_worker(hass.async_add_executor_job(process))
         except HealthImportError:
             raise
         except Exception as err:
@@ -242,7 +260,7 @@ def register_data_services(hass: HomeAssistant) -> None:
                 if lock.locked():
                     raise HealthImportError("import_in_progress")
                 async with lock:
-                    result = await hass.async_add_executor_job(_import_sync, store, json_records(data), include, "all")
+                    result = await _finish_worker(hass.async_add_executor_job(_import_sync, store, json_records(data), include, "all"))
                 await store.async_audit("import_health_samples", actor=call.context.user_id or "system")
                 await entry.runtime_data.coordinator.async_refresh_from_store()
                 hass.bus.async_fire(IMPORT_EVENT, {"config_entry_id": entry.entry_id, **result})

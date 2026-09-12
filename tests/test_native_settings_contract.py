@@ -22,7 +22,7 @@ def test_settings_gear_is_not_custom_panel_config():
 def test_native_options_flow_remains_available():
     source = (ROOT / "custom_components/health_link/config_flow.py").read_text()
     assert "async_get_options_flow" in source
-    assert "class HealthLinkOptionsFlow(OptionsFlowWithReload)" in source
+    assert "class HealthLinkOptionsFlow(HealthDataOptionsMixin, OptionsFlowWithReload)" in source
 
 
 def test_upgrade_restores_only_integration_disabled_summaries(monkeypatch):

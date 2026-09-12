@@ -20,6 +20,7 @@ from .const import (
 )
 from .intelligence import GOAL_KEYS, report_payload
 from .models import HealthLinkRuntimeData
+from .profile_summary import profile_loaded
 
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 ATTR_TYPE_ID = "type_id"
@@ -41,7 +42,7 @@ ATTR_MIN_CONFIDENCE = "min_confidence"
 
 
 def _runtime_for_call(hass: HomeAssistant, call: ServiceCall) -> tuple[Any, HealthLinkRuntimeData]:
-    entries = [e for e in hass.config_entries.async_entries(DOMAIN) if getattr(e, "runtime_data", None)]
+    entries = [e for e in hass.config_entries.async_entries(DOMAIN) if profile_loaded(e)]
     wanted = call.data.get(ATTR_CONFIG_ENTRY_ID)
     if wanted:
         entry = next((e for e in entries if e.entry_id == wanted), None)
@@ -269,12 +270,15 @@ def async_register_services(hass: HomeAssistant) -> None:
         return
 
     async def handle_recalculate(call: ServiceCall) -> None:
+        await _require_admin(hass, call)
         await _recalculate(hass, call)
 
     async def handle_refresh_baseline(call: ServiceCall) -> None:
+        await _require_admin(hass, call)
         await _refresh_baseline(hass, call)
 
     async def handle_sync_request(call: ServiceCall) -> dict[str, Any]:
+        await _require_admin(hass, call)
         return await _sync_request(hass, call)
 
     async def handle_backfill_request(call: ServiceCall) -> dict[str, Any]:
@@ -282,15 +286,18 @@ def async_register_services(hass: HomeAssistant) -> None:
         return await _backfill_request(hass, call)
 
     async def handle_daily_report(call: ServiceCall) -> dict[str, Any]:
+        await _require_admin(hass, call)
         return await _daily_report(hass, call)
 
     async def handle_trends(call: ServiceCall) -> dict[str, Any]:
+        await _require_admin(hass, call)
         return await _trends(hass, call)
 
     async def handle_set_goal(call: ServiceCall) -> dict[str, Any]:
         return await _set_goal(hass, call)
 
     async def handle_evaluate_routine(call: ServiceCall) -> dict[str, Any]:
+        await _require_admin(hass, call)
         return await _evaluate_routine(hass, call)
 
     async def handle_record_routine(call: ServiceCall) -> dict[str, Any]:

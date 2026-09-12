@@ -23,6 +23,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .companion import discover_companion_devices
+from .options_data import HealthDataOptionsMixin
 from .profile_support import (
     normalize_device_ids as _normalize_device_ids,
     entry_device_ids as _entry_companion_device_ids,
@@ -171,14 +172,14 @@ class HealthLinkConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
-class HealthLinkOptionsFlow(OptionsFlowWithReload):
+class HealthLinkOptionsFlow(HealthDataOptionsMixin, OptionsFlowWithReload):
     """Expose only options that are useful and implemented for end users."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         self._options = dict(self.config_entry.options)
-        return await self.async_step_general(user_input)
+        return self.async_show_menu(step_id="init", menu_options=["general", "metrics", "import_data"])
 
     async def async_step_general(
         self, user_input: dict[str, Any] | None = None

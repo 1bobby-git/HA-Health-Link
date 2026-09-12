@@ -201,7 +201,7 @@ def test_real_ha_services_and_uploaded_file_cleanup(tmp_path):
         result = await import_uploaded(hass, entry, file_id, include_sensitive=True)
         assert result["ecg_new"] == 1
         assert not (directory / file_id).exists()
-        hass.auth.async_get_user = AsyncMock(return_value=NS(is_admin=False))
+        hass.auth = NS(async_get_user=AsyncMock(return_value=NS(is_admin=False)))
         with pytest.raises(HomeAssistantError, match="Administrator"):
             await hass.services.async_call("health_link", "get_ecg_records", {}, blocking=True,
                                            return_response=True, context=Context(user_id="non_admin"))

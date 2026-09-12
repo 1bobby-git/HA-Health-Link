@@ -59,12 +59,53 @@
           "goal_water_ml": "물 기록 목표(mL)",
           "goal_sleep_minutes": "수면 목표(분)"
         }
+      },
+      "init": {
+        "title": "HealthLink 설정",
+        "menu_options": {
+          "general": "기기·목표·개인정보 설정",
+          "metrics": "건강 항목 노출",
+          "import_data": "건강 원본·ECG 가져오기"
+        }
+      },
+      "metrics": {
+        "title": "건강 항목 노출",
+        "description": "실제로 수집한 항목만 표시합니다. 기존 걸음·활동·수면 요약 센서는 그대로 유지됩니다. 민감 항목을 일반 HA 엔티티로 노출하면 HA의 접근 권한을 가진 다른 사용자도 볼 수 있으므로 공유 범위를 확인하세요.",
+        "data": {
+          "exposed_metrics": "노출할 건강 항목",
+          "enable_sensitive": "민감 건강 항목 허용"
+        }
+      },
+      "import_data": {
+        "title": "건강 원본·ECG 가져오기",
+        "description": "대상: {profile}. Apple 건강의 export.zip/export.xml, 지원하는 ECG CSV 또는 JSON을 선택하세요(최대 100 MB). ECG는 Labs가 자동 전송하지 않습니다. ECG·기타 민감 자료를 가져오려면 먼저 기기·목표·개인정보 설정에서 민감 건강 항목을 허용하세요. 선택한 파일은 로컬에서 처리 후 삭제되며, 가져온 기록은 이 프로필에 보관됩니다. 다른 가족의 파일을 선택하지 마세요.",
+        "data": {
+          "file_id": "파일 선택",
+          "scope": "가져올 범위",
+          "include_sensitive": "ECG 등 민감 자료 포함",
+          "confirm_profile": "이 프로필 본인의 자료임을 확인함"
+        }
+      },
+      "import_result": {
+        "title": "가져오기 결과",
+        "description": "신규 저장 항목(파형 조각 포함): {inserted}, 기존 항목 갱신: {updated}, 새 ECG: {ecg_new}, 민감 자료 제외: {skipped_sensitive}, 미지원 항목 제외: {skipped_unsupported}. 완료 후 건강 항목 노출 메뉴에서 원하는 센서를 선택하세요."
       }
     },
     "error": {
       "device_already_used": "선택한 iPhone 중 하나 이상이 이미 다른 HealthLink 건강 프로필에 연결되어 있습니다.",
       "select_device": "이 프로필에 연결할 본인의 iPhone을 선택하세요.",
-      "device_not_found": "선택한 기기를 현재 찾을 수 없습니다. 목록을 다시 확인하세요."
+      "device_not_found": "선택한 기기를 현재 찾을 수 없습니다. 목록을 다시 확인하세요.",
+      "confirm_profile_required": "본인 프로필의 자료인지 확인해 주세요.",
+      "sensitive_disabled": "먼저 개인정보 설정에서 민감 건강 항목을 허용하세요.",
+      "invalid_metric_selection": "현재 표시된 건강 항목을 선택해 주세요."
+    },
+    "progress": {
+      "importing_health_data": "건강 자료를 검증하고 로컬 저장소로 가져오는 중"
+    },
+    "abort": {
+      "profile_unavailable": "프로필이 로드되지 않았습니다. 기존 설정을 확인한 뒤 다시 시도하세요.",
+      "no_discovered_metrics": "아직 추가로 노출할 건강 항목이 없습니다. iPhone에서 건강 센서를 켜거나 건강 원본 파일을 먼저 가져오세요.",
+      "health_import_failed": "가져오지 못했습니다. 오류 코드: {error}. 파일 형식·크기·날짜·단위·민감자료 허용을 확인하세요."
     }
   },
   "entity": {
@@ -140,6 +181,24 @@
       },
       "daily_focus": {
         "name": "오늘의 생활 포커스"
+      },
+      "ecg_record_count": {
+        "name": "ECG 기록 수"
+      },
+      "ecg_last_recorded": {
+        "name": "마지막 ECG 측정 시각"
+      },
+      "ecg_classification": {
+        "name": "ECG 원본 분류 결과"
+      },
+      "ecg_average_heart_rate": {
+        "name": "ECG 평균 심박"
+      },
+      "ecg_point_count": {
+        "name": "ECG 파형 측정 수"
+      },
+      "ecg_duration": {
+        "name": "ECG 기록 길이"
       }
     },
     "binary_sensor": {
@@ -151,6 +210,11 @@
       },
       "configured_goals_reached": {
         "name": "설정한 오늘 목표 달성"
+      }
+    },
+    "image": {
+      "ecg_waveform": {
+        "name": "ECG 파형 미리보기"
       }
     }
   }

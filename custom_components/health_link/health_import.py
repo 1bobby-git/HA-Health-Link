@@ -253,7 +253,10 @@ def _xml_records(stream: BinaryIO) -> Iterator[dict[str, Any]]:
             count += 1
             if count > MAX_RECORDS:
                 raise HealthImportError("too_many_records")
-            yield raw_record(dict(element.attrib))
+            if _TYPE.fullmatch(element.get("type", "")):
+                yield raw_record(dict(element.attrib))
+            else:
+                yield {"_skip": "unsupported_health_type"}
         elif depth == 2 and element.tag == "Workout":
             attrs = {key: _text(value, 512) for key, value in element.attrib.items()}
             start = timestamp(attrs.get("startDate")); end = timestamp(attrs.get("endDate"))

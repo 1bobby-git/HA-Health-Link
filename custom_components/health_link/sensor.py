@@ -16,6 +16,8 @@ from homeassistant.config_entries import ConfigEntry
 
 from .const import DOMAIN, DOMAIN_ICONS
 from .models import HealthLinkRuntimeData
+from .data_features import exposed_types, sensitive
+from .ecg_entities import ecg_enabled, ecg_sensors
 
 @dataclass(frozen=True, kw_only=True)
 class HealthLinkSensorDescription(SensorEntityDescription):
@@ -77,12 +79,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     _reenable_integration_disabled_summaries(hass,entry)
     runtime:HealthLinkRuntimeData=entry.runtime_data
     entities:list[SensorEntity]=[HealthLinkSensor(runtime,entry,d) for d in DESCRIPTIONS]
-    for info in await runtime.store.async_exposed_types():
-        if info["type_id"] not in CORE_TYPES:
+    for info in await exposed_types(runtime.store, entry.options):
+        if info["type_id"] not in CORE_TYPES and info.get("object_kind") in {"quantity", "category", "activity_summary"}:
             entities.append(HealthLinkRawMetricSensor(runtime,entry,info))
     for definition in await runtime.store.async_list_composers():
         if definition.get("enabled") and definition.get("entity_exposure", 1):
             entities.append(HealthLinkComposerSensor(runtime,entry,definition))
+    if await ecg_enabled(runtime.store, entry.options):
+        entities.extend(ecg_sensors(runtime, entry))
     async_add_entities(entities)
 
 class _Base(CoordinatorEntity):
@@ -141,6 +145,9 @@ class HealthLinkRawMetricSensor(_Base,SensorEntity):
                 self._attr_state_class=SensorStateClass.TOTAL_INCREASING
             else:
                 self._attr_state_class=SensorStateClass.MEASUREMENT
+    @property
+    def available(self):
+        return super().available and (self.entry.options.get("enable_sensitive", False) or not sensitive(self.info))
     @property
     def native_value(self):
         row=(self.coordinator.data or {}).get("raw_metrics",{}).get(self.type_id)

@@ -12,6 +12,7 @@ from .const import (DEFAULT_BASELINE_WINDOW, DOMAIN, EVENT_CONTEXT_CHANGED, EVEN
 from .intelligence import build_daily_context, relative_to_median
 from .composer.engine import ComposerError, SafeFormula
 from .storage import HealthLinkStore
+from .data_features import exposed_types, ecg_snapshot
 
 ALIASES = {
     "steps": ["HKQuantityTypeIdentifierStepCount"],
@@ -55,7 +56,7 @@ class HealthLinkCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         opts=self.entry.options
         window=int(opts.get("baseline_window", DEFAULT_BASELINE_WINDOW))
         status=await self.store.async_status()
-        exposed=await self.store.async_exposed_types()
+        exposed=await exposed_types(self.store, opts)
         raw=await self.store.async_latest_for_types([x["type_id"] for x in exposed])
 
         steps=await self.store.async_today_metric(ALIASES["steps"])
@@ -170,6 +171,7 @@ class HealthLinkCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "raw_metrics": raw,
             "composer_values": composer_values,
         }
+        snapshot["ecg"] = await ecg_snapshot(self.store, opts)
         daily = build_daily_context(snapshot, opts)
         snapshot["goal_progress"] = daily["goals"]
         snapshot["daily_goal_context"] = daily["goal_context"]

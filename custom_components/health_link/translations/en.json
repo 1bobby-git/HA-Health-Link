@@ -59,12 +59,53 @@
           "goal_water_ml": "Recorded water goal (mL)",
           "goal_sleep_minutes": "Sleep goal (minutes)"
         }
+      },
+      "init": {
+        "title": "HealthLink settings",
+        "menu_options": {
+          "general": "Devices, goals and privacy",
+          "metrics": "Health metric exposure",
+          "import_data": "Import health records and ECG"
+        }
+      },
+      "metrics": {
+        "title": "Health metric exposure",
+        "description": "Only discovered metrics are listed. Existing steps/activity/sleep summary sensors are preserved. Sensitive values exposed as normal HA entities may be visible to other HA users; verify your sharing and access settings.",
+        "data": {
+          "exposed_metrics": "Metrics to expose",
+          "enable_sensitive": "Allow sensitive health metrics"
+        }
+      },
+      "import_data": {
+        "title": "Import health records and ECG",
+        "description": "Target: {profile}. Select Apple Health export.zip/export.xml, supported ECG CSV or JSON (100 MB maximum). Labs does not automatically send ECG. Enable sensitive data in privacy settings before importing ECG or other sensitive records. Files are processed locally and removed; records remain in this profile. Do not select another person's file.",
+        "data": {
+          "file_id": "Select file",
+          "scope": "Import scope",
+          "include_sensitive": "Include sensitive records including ECG",
+          "confirm_profile": "I confirm these records belong to this profile"
+        }
+      },
+      "import_result": {
+        "title": "Import result",
+        "description": "New stored items (including waveform chunks): {inserted}; updated: {updated}; new ECG records: {ecg_new}; excluded sensitive: {skipped_sensitive}; unsupported: {skipped_unsupported}. Finish, then select desired sensors under Health metric exposure."
       }
     },
     "error": {
       "device_already_used": "One or more selected iPhones already belong to another HealthLink profile.",
       "select_device": "Choose the iPhone(s) belonging to this profile.",
-      "device_not_found": "A selected device is no longer available. Check the list again."
+      "device_not_found": "A selected device is no longer available. Check the list again.",
+      "confirm_profile_required": "Confirm the records belong to this profile.",
+      "sensitive_disabled": "Enable sensitive health metrics in privacy settings first.",
+      "invalid_metric_selection": "Choose a metric listed in this form."
+    },
+    "progress": {
+      "importing_health_data": "Validating and importing health records locally"
+    },
+    "abort": {
+      "profile_unavailable": "Profile is not loaded. Check its setup and retry.",
+      "no_discovered_metrics": "No additional metrics are available. Enable iPhone health sensors or import a health export first.",
+      "health_import_failed": "Import failed. Error code: {error}. Check file format, size, timestamps, units and sensitive-data permission."
     }
   },
   "entity": {
@@ -140,6 +181,24 @@
       },
       "daily_focus": {
         "name": "Daily wellness focus"
+      },
+      "ecg_record_count": {
+        "name": "ECG record count"
+      },
+      "ecg_last_recorded": {
+        "name": "Last ECG recorded"
+      },
+      "ecg_classification": {
+        "name": "ECG source classification"
+      },
+      "ecg_average_heart_rate": {
+        "name": "ECG average heart rate"
+      },
+      "ecg_point_count": {
+        "name": "ECG voltage measurement count"
+      },
+      "ecg_duration": {
+        "name": "ECG record duration"
       }
     },
     "binary_sensor": {
@@ -151,6 +210,11 @@
       },
       "configured_goals_reached": {
         "name": "Configured daily goals reached"
+      }
+    },
+    "image": {
+      "ecg_waveform": {
+        "name": "ECG waveform preview"
       }
     }
   }

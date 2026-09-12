@@ -25,6 +25,7 @@ from .const import (
 from .coordinator import HealthLinkCoordinator
 from .models import HealthLinkRuntimeData
 from .services import async_register_services
+from .data_features import register_data_services
 from .storage import HealthLinkStore
 from .webhook import async_register_bridge_webhook, async_unregister_bridge_webhook
 from .websocket import async_register_websocket_api
@@ -43,6 +44,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up global HealthLink facilities."""
     domain_data = hass.data.setdefault(DOMAIN, {})
     async_register_services(hass)
+    register_data_services(hass)
     if not domain_data.get(_DATA_WS_READY):
         async_register_websocket_api(hass)
         domain_data[_DATA_WS_READY] = True
