@@ -271,19 +271,26 @@ class HealthLinkPanel extends HTMLElement {
 
   _today(p) {
     const noData = !p.sample_count;
-    return `${p.companion_needs_selection?`<div class="card setup"><h3>${this._t('내 iPhone을 한 번만 선택하세요','Choose your iPhone once')}</h3><div class="note">${this._t('여러 iPhone의 건강 데이터가 섞이지 않도록 자동 가져오기를 잠시 멈췄습니다. 설정 → 기기 및 서비스 → HealthLink → 구성에서 본인의 iPhone만 선택하면 됩니다.','HealthLink paused automatic import so health data from multiple iPhones can never be mixed. Go to Settings → Devices & services → HealthLink → Configure and choose your iPhone.')}</div></div>`:''}${noData?`<div class="card setup"><h3>${this._t('1분이면 준비됩니다','Ready in about a minute')}</h3>
-      <div class="note">${this._t('별도 YAML이나 센서 ID 입력은 필요 없습니다. iPhone의 Home Assistant 앱에서 Apple 건강 센서만 켜면 HealthLink가 자동으로 찾습니다.','No YAML or entity IDs are required. Enable Apple Health sensors in the Home Assistant iPhone app and HealthLink will find them automatically.')}</div>
-      <ol class="steps"><li>${this._t('iPhone에서 Home Assistant 앱 열기','Open Home Assistant on iPhone')}</li><li>${this._t('설정 → 센서 → Apple 건강 센서','Settings → Sensors → Apple Health Sensors')}</li><li>${this._t('원하는 Apple 건강 센서를 켜기. “모든 센서를 활성화하기”가 보이면 한 번에 켤 수 있습니다.','Enable the Apple Health sensors you want. If “Enable all Apple Health sensors” is available, you can turn them on at once.')}</li></ol>
+    const goals = p.goal_progress || {};
+    const goalCards = Object.entries(goals).map(([key,item]) => {
+      const labels={steps:this._t('걸음','Steps'),exercise_minutes:this._t('운동 시간','Exercise'),active_energy:this._t('활동 에너지','Active energy'),water_ml:this._t('물 기록','Recorded water'),sleep_minutes:this._t('수면','Sleep')};
+      return this._metric(`${labels[key]||key} ${this._t('목표','goal')}`, item.progress===null||item.progress===undefined?'—':`${Math.round(item.progress)}%`);
+    }).join('');
+    const focusMap={none:this._t('특별한 포커스 없음','No priority focus'),steps:this._t('활동','Activity'),exercise_minutes:this._t('운동 시간','Exercise'),active_energy:this._t('활동 에너지','Active energy'),water_ml:this._t('물 기록','Recorded water'),sleep_minutes:this._t('수면','Sleep'),recovery_context:this._t('회복 컨텍스트','Recovery context')};
+    const contextMap={not_configured:this._t('목표 미설정','No goals configured'),all_reached:this._t('설정한 목표 달성','Configured goals reached'),in_progress:this._t('진행 중','In progress'),waiting_for_data:this._t('데이터 대기','Waiting for data')};
+    return `${p.companion_needs_selection?`<div class="card setup"><h3>${this._t('내 iPhone을 한 번만 선택하세요','Choose your iPhone once')}</h3><div class="note">${this._t('여러 iPhone의 건강 데이터가 섞이지 않도록 자동 가져오기를 잠시 멈췄습니다. 설정 → 기기 및 서비스 → HealthLink → 구성에서 본인의 iPhone만 선택하면 됩니다.','HealthLink paused automatic import so health data from multiple iPhones can never be mixed. Go to Settings → Devices & services → HealthLink → Configure and choose your iPhone.')}</div></div>`:''}${noData?`<div class="card setup"><h3>${this._t('Apple 건강 센서를 연결하세요','Connect Apple Health sensors')}</h3>
+      <div class="note">${this._t('iPhone의 공식 Home Assistant 앱 → 설정 → 센서 → Apple 건강 센서(Labs)에서 원하는 항목을 켜세요. HealthLink는 그 값을 복제해서 보여주는 대신 개인 기준선·목표·집 자동화용 컨텍스트를 만듭니다.','Enable Apple Health Sensors (Labs) in the official Home Assistant iPhone app. HealthLink uses those values to build personal baselines, goals and home-automation context rather than simply duplicating the raw values.')}</div>
       <div class="toolbar"><button id="refresh">${this._t('다시 확인','Check again')}</button></div></div>`:''}
-      <h2>${this._t('오늘','Today')}</h2><div class="grid">
-      ${this._metric(this._t('걸음','Steps'),this._fmt(p.steps_today,' steps'),'mdi:walk')}
-      ${this._metric(this._t('수면','Sleep'),this._minutes(p.sleep_duration),'')}
-      ${this._metric(this._t('깊은 수면','Deep sleep'),this._minutes(p.sleep_deep),'')}
-      ${this._metric(this._t('수면 효율','Sleep efficiency'),this._fmt(p.sleep_efficiency,'%'),'')}
+      <h2>${this._t('오늘의 HealthLink 컨텍스트','Today · HealthLink context')}</h2>
+      <div class="card"><div class="row"><span>${this._t('오늘의 포커스','Today focus')}</span><strong>${this._esc(focusMap[p.daily_focus]||p.daily_focus||'—')}</strong></div><div class="row"><span>${this._t('개인 목표 상태','Personal goals')}</span><strong>${this._esc(contextMap[p.daily_goal_context]||p.daily_goal_context||'—')}</strong></div><div class="note" style="margin-top:10px">${this._t('원본 Apple 건강 값은 Mobile App 통합에서 이미 볼 수 있으므로, HealthLink 첫 화면은 중복 수치보다 개인 기준선과 자동화에 쓸 수 있는 파생 정보를 우선합니다.','Raw Apple Health values already exist in the Mobile App integration, so HealthLink prioritizes derived personal context for analysis and automations.')}</div></div>
+      <div class="grid" style="margin-top:12px">
+      ${this._metric(this._t('같은 시간대 평소 대비 걸음','Steps vs same-time baseline'),p.steps_vs_same_time_baseline===null||p.steps_vs_same_time_baseline===undefined?'—':`${p.steps_vs_same_time_baseline}%`)}
       ${this._metric(this._t('회복 컨텍스트','Recovery context'),this._recovery(p.recovery_context),'')}
+      ${this._metric(this._t('회복 컨텍스트 신뢰도','Recovery confidence'),this._fmt(p.recovery_confidence,'%'),'')}
       ${this._metric(this._t('데이터 신뢰도','Data confidence'),this._fmt(p.data_confidence,'%'),'')}
       </div>
-      <h2>${this._t('현재 상태','Current status')}</h2><div class="card"><div class="row"><span>${this._t('최근 동기화','Last sync')}</span><strong>${p.last_sync?new Date(p.last_sync).toLocaleString(): '—'}</strong></div><div class="row"><span>${this._t('가져온 건강 항목','Health data types')}</span><strong>${p.type_count||0}</strong></div><div class="row"><span>${this._t('저장된 샘플','Stored samples')}</span><strong>${p.sample_count||0}</strong></div></div>`;
+      ${goalCards?`<h2>${this._t('내가 정한 목표','My goals')}</h2><div class="grid">${goalCards}</div>`:`<div class="card setup" style="margin-top:16px"><strong>${this._t('원하면 개인 목표를 설정할 수 있습니다.','Personal goals are optional.')}</strong><div class="note">${this._t('통합 구성 → 개인 생활 목표에서 걸음·운동·활동 에너지·물 기록·수면 목표를 직접 정합니다. 0은 사용 안 함이며 HealthLink가 의료 권장량을 임의로 정하지 않습니다.','Configure your own steps, exercise, energy, recorded water and sleep goals. Zero disables a goal; HealthLink never invents medical targets.')}</div></div>`}
+      <h2>${this._t('데이터 상태','Data status')}</h2><div class="card"><div class="row"><span>${this._t('최근 동기화','Last sync')}</span><strong>${p.last_sync?new Date(p.last_sync).toLocaleString(): '—'}</strong></div><div class="row"><span>${this._t('가져온 Apple 건강 항목','Imported Apple Health types')}</span><strong>${p.type_count||0}</strong></div><div class="row"><span>${this._t('저장된 기록','Stored records')}</span><strong>${p.sample_count||0}</strong></div></div>`;
   }
   _metric(label,value){return `<article class="card metric"><div class="label">${label}</div><div class="value">${value}</div></article>`;}
   _minutes(v){ if(v===null||v===undefined)return '—'; const h=Math.floor(v/60),m=Math.round(v%60); return h?`${h}${this._t('시간','h')} ${m}${this._t('분','m')}`:`${m}${this._t('분','m')}`; }

@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant, callback
 
 from .analytics.engine import align_previous, observed_best_range, pearson
 from .composer.engine import ComposerError, SafeFormula
-from .const import CONF_BRIDGE_SECRET, CONF_PROFILE_ID, DOMAIN
+from .const import COMPANION_METRICS, CONF_BRIDGE_SECRET, CONF_PROFILE_ID, DOMAIN
 from .models import HealthLinkRuntimeData
 from .profile_summary import profile_loaded, profile_summary
 
@@ -31,6 +31,11 @@ def _entry(hass:HomeAssistant,msg:dict[str,Any]):
         return found
     if len(entries)==1:return entries[0]
     raise ValueError("config_entry_id is required when multiple profiles exist")
+
+def _companion_value_only_type(type_id: str) -> bool:
+    """Return true when Labs provides a value but not the HealthKit sample timestamp."""
+    return type_id in {metric.type_id for metric in COMPANION_METRICS.values()} or type_id.startswith("companion.health_")
+
 def _send_profile_error(connection,msg,err)->None:connection.send_error(msg["id"],"profile_not_found",str(err))
 
 def _entry_summary(entry)->dict[str,Any]:
@@ -183,6 +188,8 @@ async def ws_timeline(hass,connection,msg):
 async def ws_insight_correlation(hass,connection,msg):
     try:e=_entry(hass,msg)
     except ValueError as err:_send_profile_error(connection,msg,err);return
+    if _companion_value_only_type(msg["type_id"]):
+        connection.send_error(msg["id"],"timestamp_unavailable","Apple Health Sensors (Labs) currently expose the metric value to Home Assistant, not the original HealthKit sample timestamp. HealthLink disables time-aligned home correlation for this source to avoid false associations.");return
     end=datetime.now(timezone.utc);start=end-timedelta(days=msg["days"]);rows=await e.runtime_data.store.async_series(msg["type_id"],start.isoformat(),end.isoformat(),10000)
     health_points=[(r["timestamp"],r["value"]) for r in rows if r.get("value") is not None];home=await _ha_history_numeric(hass,connection,[msg["entity_id"]],start,end);result=pearson(align_previous(health_points,home.get(msg["entity_id"],[])))
     connection.send_result(msg["id"],{"pairs":result.pairs,"correlation":result.correlation,"strength":result.strength,"direction":result.direction,"note":"Observed association only. This does not establish medical or causal effect."})
@@ -193,6 +200,8 @@ async def ws_insight_correlation(hass,connection,msg):
 async def ws_optimizer_observe(hass,connection,msg):
     try:e=_entry(hass,msg)
     except ValueError as err:_send_profile_error(connection,msg,err);return
+    if _companion_value_only_type(msg["outcome_type_id"]):
+        connection.send_error(msg["id"],"timestamp_unavailable","Apple Health Sensors (Labs) do not currently provide HealthKit sample timestamps. Observed best-range analysis is disabled for this source until reliable episode/sample time semantics are available.");return
     end=datetime.now(timezone.utc);start=end-timedelta(days=msg["days"]);rows=await e.runtime_data.store.async_series(msg["outcome_type_id"],start.isoformat(),end.isoformat(),10000)
     hp=[(r["timestamp"],r["value"]) for r in rows if r.get("value") is not None];home=await _ha_history_numeric(hass,connection,[msg["environment_entity_id"]],start,end);pairs=align_previous(hp,home.get(msg["environment_entity_id"],[]));best=observed_best_range(pairs,goal=msg["goal"]);association=pearson(pairs)
     connection.send_result(msg["id"],{"preferred_observed_range":best,"pairs":association.pairs,"correlation":association.correlation,"note":"Observational only; not a medical recommendation or independent automatic-control trigger."})

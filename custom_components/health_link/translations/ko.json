@@ -48,6 +48,17 @@
           "raw_retention_days": "원본 데이터 보관 기간(일)",
           "enable_sensitive": "민감 건강 항목을 HA 센서로 노출 허용"
         }
+      },
+      "goals": {
+        "title": "개인 생활 목표",
+        "description": "원하는 목표만 입력하세요. 0은 사용 안 함입니다. HealthLink는 의료 권장 목표를 자동으로 정하지 않습니다.",
+        "data": {
+          "goal_steps": "걸음 목표",
+          "goal_exercise_minutes": "운동 시간 목표(분)",
+          "goal_active_energy": "활동 에너지 목표(kcal)",
+          "goal_water_ml": "물 기록 목표(mL)",
+          "goal_sleep_minutes": "수면 목표(분)"
+        }
       }
     },
     "error": {
@@ -105,6 +116,30 @@
       },
       "activity_vs_baseline": {
         "name": "활동 개인 기준선 대비"
+      },
+      "steps_goal_progress": {
+        "name": "걸음 목표 진행률"
+      },
+      "exercise_goal_progress": {
+        "name": "운동 시간 목표 진행률"
+      },
+      "active_energy_goal_progress": {
+        "name": "활동 에너지 목표 진행률"
+      },
+      "water_goal_progress": {
+        "name": "물 기록 목표 진행률"
+      },
+      "sleep_goal_progress": {
+        "name": "수면 목표 진행률"
+      },
+      "steps_vs_same_time_baseline": {
+        "name": "같은 시간대 평소 대비 걸음"
+      },
+      "daily_goal_context": {
+        "name": "오늘 목표 컨텍스트"
+      },
+      "daily_focus": {
+        "name": "오늘의 생활 포커스"
       }
     },
     "binary_sensor": {
@@ -113,6 +148,9 @@
       },
       "recovery_below_baseline": {
         "name": "회복 상태가 평소보다 낮음"
+      },
+      "configured_goals_reached": {
+        "name": "설정한 오늘 목표 달성"
       }
     }
   }

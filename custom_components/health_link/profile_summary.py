@@ -43,6 +43,7 @@ def profile_summary(entry) -> dict:
         "sample_count", "type_count", "source_count", "last_sync", "data_stale",
         "data_confidence", "steps_today", "sleep_duration", "sleep_deep", "sleep_rem",
         "sleep_efficiency", "recovery_context", "recovery_score", "recovery_confidence",
+        "goal_progress", "daily_goal_context", "daily_focus", "steps_vs_same_time_baseline",
     )
     return {
         **base,

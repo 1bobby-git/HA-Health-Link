@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS series_chunks(profile_id TEXT,series_uuid TEXT,chunk_
 CREATE TABLE IF NOT EXISTS composer_definitions(profile_id TEXT,id TEXT,name TEXT,version INTEGER DEFAULT 1,enabled INTEGER DEFAULT 1,definition_json TEXT,entity_exposure INTEGER DEFAULT 1,updated_at TEXT,PRIMARY KEY(profile_id,id));
 CREATE TABLE IF NOT EXISTS sync_state(profile_id TEXT,bridge_id TEXT,sequence INTEGER DEFAULT -1,last_nonce TEXT,last_success TEXT,PRIMARY KEY(profile_id,bridge_id));
 CREATE TABLE IF NOT EXISTS audit_events(id INTEGER PRIMARY KEY AUTOINCREMENT,profile_id TEXT,action TEXT,actor TEXT,timestamp TEXT,object_type TEXT,success INTEGER,error_code TEXT);
+CREATE TABLE IF NOT EXISTS routine_events(id INTEGER PRIMARY KEY AUTOINCREMENT,profile_id TEXT,routine TEXT,outcome TEXT,note TEXT,timestamp TEXT,actor TEXT);
 CREATE TABLE IF NOT EXISTS meta(profile_id TEXT,key TEXT,value TEXT,PRIMARY KEY(profile_id,key));
 """
 _STRUCTURED_KINDS={"workout","route","ecg","audiogram","clinical","medication","medication_dose","assessment","state_of_mind","vision","correlation","activity_summary","characteristic"}
@@ -170,6 +171,35 @@ class HealthLinkStore:
         grouped:dict[str,list[float]]={}
         for r in rows:grouped.setdefault(r[0],[]).append(float(r[1]))
         return [vals[-1] if snapshot else sum(vals) for _,vals in sorted(grouped.items())]
+
+
+    async def async_same_time_snapshots(self,type_ids:Iterable[str],days:int,reference:datetime|None=None)->list[float]:return await self._run(self._same_time_snapshots_sync,list(type_ids),days,reference)
+    def _same_time_snapshots_sync(self,ids:list[str],days:int,reference:datetime|None)->list[float]:
+        if not ids:return []
+        try:zone=ZoneInfo(self.timezone_name)
+        except ZoneInfoNotFoundError:zone=timezone.utc
+        now=(reference or datetime.now(timezone.utc)).astimezone(zone)
+        start=(now.date()-timedelta(days=max(1,days))).isoformat();qs=','.join('?'*len(ids))
+        with self._connect() as con:rows=con.execute(f"SELECT local_date,numeric_value,end_ts FROM samples WHERE profile_id=? AND type_id IN ({qs}) AND local_date>=? AND local_date<? AND deleted=0 AND numeric_value IS NOT NULL ORDER BY local_date,end_ts",[self.profile_id,*ids,start,now.date().isoformat()]).fetchall()
+        grouped:dict[str,float]={}
+        cutoff=(now.hour,now.minute,now.second)
+        for row in rows:
+            try:stamp=datetime.fromisoformat(row[2].replace('Z','+00:00')).astimezone(zone)
+            except (TypeError,ValueError):continue
+            if (stamp.hour,stamp.minute,stamp.second)<=cutoff:grouped[row[0]]=float(row[1])
+        return [grouped[key] for key in sorted(grouped)][-max(1,days):]
+
+    async def async_record_routine(self,routine:str,outcome:str,*,note:str|None=None,actor:str="system")->int:return await self._run(self._record_routine_sync,routine,outcome,note,actor)
+    def _record_routine_sync(self,routine:str,outcome:str,note:str|None,actor:str)->int:
+        with self._connect() as con:
+            cur=con.execute("INSERT INTO routine_events(profile_id,routine,outcome,note,timestamp,actor) VALUES(?,?,?,?,?,?)",(self.profile_id,routine,outcome,(note or '')[:500] or None,_utcnow(),actor))
+            return int(cur.lastrowid)
+    async def async_routine_history(self,*,routine:str|None=None,limit:int=50)->list[dict[str,Any]]:return await self._run(self._routine_history_sync,routine,limit)
+    def _routine_history_sync(self,routine:str|None,limit:int)->list[dict[str,Any]]:
+        where="profile_id=?";params:list[Any]=[self.profile_id]
+        if routine:where+=" AND routine=?";params.append(routine)
+        params.append(min(max(int(limit),1),200))
+        with self._connect() as con:return [dict(r) for r in con.execute(f"SELECT id,routine,outcome,note,timestamp,actor FROM routine_events WHERE {where} ORDER BY id DESC LIMIT ?",params).fetchall()]
 
     async def async_series(self,type_id:str,start:str,end:str,limit:int=5000)->list[dict[str,Any]]:return await self._run(self._series_sync,type_id,start,end,limit)
     def _series_sync(self,type_id:str,start:str,end:str,limit:int)->list[dict[str,Any]]:

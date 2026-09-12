@@ -8,7 +8,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .baseline.engine import robust_baseline, robust_zscore, relative_change
-from .const import DEFAULT_BASELINE_WINDOW, DOMAIN
+from .const import (DEFAULT_BASELINE_WINDOW, DOMAIN, EVENT_CONTEXT_CHANGED, EVENT_GOAL_REACHED)
+from .intelligence import build_daily_context, relative_to_median
 from .composer.engine import ComposerError, SafeFormula
 from .storage import HealthLinkStore
 
@@ -31,12 +32,24 @@ class HealthLinkCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         super().__init__(hass, logger=__import__("logging").getLogger(__name__), config_entry=entry, name=f"{DOMAIN}-{entry.entry_id}")
         self.store=store
         self.entry=entry
+        self._last_goal_reached: set[str] | None = None
+        self._last_context: str | None = None
 
     async def _async_update_data(self) -> dict[str, Any]:
         return await self._build_snapshot()
 
     async def async_refresh_from_store(self) -> None:
-        self.async_set_updated_data(await self._build_snapshot())
+        data = await self._build_snapshot()
+        context = data.get("daily_goal_context")
+        reached = {name for name,item in (data.get("goal_progress") or {}).items() if item.get("reached")}
+        if self._last_goal_reached is not None:
+            for name in sorted(reached - self._last_goal_reached):
+                self.hass.bus.async_fire(EVENT_GOAL_REACHED,{"config_entry_id":self.entry.entry_id,"goal":name,"progress":data["goal_progress"][name].get("progress")})
+        if self._last_context is not None and context != self._last_context:
+            self.hass.bus.async_fire(EVENT_CONTEXT_CHANGED,{"config_entry_id":self.entry.entry_id,"context":context})
+        self._last_goal_reached = reached
+        self._last_context = context
+        self.async_set_updated_data(data)
 
     async def _build_snapshot(self) -> dict[str, Any]:
         opts=self.entry.options
@@ -48,6 +61,7 @@ class HealthLinkCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         steps=await self.store.async_today_metric(ALIASES["steps"])
         active=await self.store.async_today_metric(ALIASES["active_energy"])
         exercise=await self.store.async_today_metric(ALIASES["exercise_time"])
+        water=await self.store.async_today_metric(["HKQuantityTypeIdentifierDietaryWater"])
         sleep,_,sleep_ts=await self.store.async_latest_numeric(ALIASES["sleep_duration"])
         deep,_,_=await self.store.async_latest_numeric(ALIASES["sleep_deep"])
         rem,_,_=await self.store.async_latest_numeric(ALIASES["sleep_rem"])
@@ -63,6 +77,8 @@ class HealthLinkCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         rhr_base=robust_baseline(rhr_hist)
         sleep_base=robust_baseline(sleep_hist)
         steps_base=robust_baseline(steps_hist)
+        steps_same_time_history=await self.store.async_same_time_snapshots(ALIASES["steps"],7)
+        steps_same_time_change=relative_to_median(steps,steps_same_time_history)
         z_hrv=robust_zscore(hrv,hrv_base)
         z_rhr=robust_zscore(rhr,rhr_base)
         sleep_change=relative_change(sleep,sleep_base.median)
@@ -127,7 +143,7 @@ class HealthLinkCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "name":item.get("name"),
                 }
 
-        return {
+        snapshot = {
             **status,
             "sync_latency_seconds": latency,
             "data_stale": stale,
@@ -135,6 +151,8 @@ class HealthLinkCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "steps_today": steps,
             "active_energy_today": active,
             "exercise_time_today": exercise,
+            "water_today": water,
+            "steps_vs_same_time_baseline": steps_same_time_change,
             "sleep_duration": sleep,
             "sleep_deep": deep,
             "sleep_rem": rem,
@@ -152,3 +170,8 @@ class HealthLinkCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "raw_metrics": raw,
             "composer_values": composer_values,
         }
+        daily = build_daily_context(snapshot, opts)
+        snapshot["goal_progress"] = daily["goals"]
+        snapshot["daily_goal_context"] = daily["goal_context"]
+        snapshot["daily_focus"] = daily["daily_focus"]
+        return snapshot
