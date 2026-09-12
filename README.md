@@ -17,6 +17,9 @@ HealthLink는 건강 데이터를 Home Assistant에 단순 복사하는 데서 �
 
 > HealthLink는 웰니스/컨텍스트 분석용 통합이며 의료기기, 진단 시스템, 치료 판단 도구가 아닙니다.
 
+> **설정과 Studio는 분리됩니다.** 통합 카드의 톱니바퀴는 Home Assistant 네이티브 설정(연결 iPhone, 기준선, 목표, 개인정보, 보존기간)을 엽니다. `HealthLink Studio`는 보고서·타임라인·인사이트·Composer를 사용하는 기능 화면이며 통합 설정 페이지가 아닙니다.
+> Mobile App의 Apple 건강 센서와 값이 겹쳐도 HealthLink의 기본 요약 센서는 숨기지 않습니다. 동일 원천 데이터를 HealthLink 프로필·파생 컨텍스트·자동화에서 일관되게 참조하기 위한 의도적인 중복입니다.
+
 ---
 
 ## 왜 HealthLink가 필요한가요?
