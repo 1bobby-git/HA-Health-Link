@@ -18,7 +18,8 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
 from .const import DEFAULT_EXPOSED_TYPE_IDS, DOMAIN
-from .health_import import ECG_TYPE, HealthImportError, MAX_RECORDS, MAX_TOTAL_POINTS, json_records, read_file
+from .ecg_import_fast import read_file
+from .health_import import ECG_TYPE, HealthImportError, MAX_RECORDS, MAX_TOTAL_POINTS, json_records
 from .profile_summary import profile_loaded
 
 ECG_EVENT = "health_link_ecg_imported"
@@ -107,13 +108,8 @@ def _waveform_sync(store, object_uuid: str, offset: int, limit: int) -> dict[str
 
 
 def _import_sync(store, records, include_sensitive: bool, scope: str) -> dict[str, Any]:
-    """Validate to temporary SQLite, then commit in ONE live-store transaction.
-
-    Parsing errors cannot leave a half-imported profile. The staging database is
-    removed on success/failure; no uploaded file, waveform or name is published.
-    Temporary staging deliberately disables its own durability journal because the
-    staging database is disposable; the live HealthLink transaction remains atomic.
-    """
+    """Validate to temporary SQLite, then commit in ONE live-store transaction."""
+    started = monotonic()
     skipped_sensitive = skipped_unsupported = total_points = visited = 0
     with tempfile.TemporaryDirectory(prefix="healthlink-import-") as directory:
         stage_path = Path(directory) / "stage.db"
@@ -156,11 +152,13 @@ def _import_sync(store, records, include_sensitive: bool, scope: str) -> dict[st
                     flush_batch()
             flush_batch()
             stage.commit()
+            staged_at = monotonic()
             count = stage.execute("SELECT COUNT(*) FROM records").fetchone()[0]
             if not count:
                 return {"inserted": 0, "updated": 0, "skipped_sensitive": skipped_sensitive,
                         "skipped_unsupported": skipped_unsupported, "ecg_new": 0, "empty": True,
-                        "records_scanned": visited, "ecg_points": total_points}
+                        "records_scanned": visited, "ecg_points": total_points,
+                        "parse_stage_seconds": round(staged_at - started, 3), "db_write_seconds": 0.0}
             kinds = dict(stage.execute("SELECT kind,COUNT(*) FROM records GROUP BY kind"))
             new_ecgs = []
             with closing(store._connect()) as current:
@@ -169,16 +167,18 @@ def _import_sync(store, records, include_sensitive: bool, scope: str) -> dict[st
                                        (store.profile_id, identity)).fetchone() is None:
                         new_ecgs.append(identity)
             def items():
-                # Metadata is last so series chunks cannot turn the ECG catalogue
-                # entry into a series_chunk entity.
                 for (raw,) in stage.execute("SELECT payload FROM records ORDER BY CASE WHEN kind='ecg' THEN 1 ELSE 0 END,identity"):
                     yield json.loads(raw)
+            write_started = monotonic()
             result = store._ingest_sync(items(), None, update_sync=False)
+            write_done = monotonic()
             result.update({"skipped_sensitive": skipped_sensitive, "skipped_unsupported": skipped_unsupported,
                            "ecg_new": len(new_ecgs), "ecg_records": kinds.get("ecg", 0),
                            "quantity_records": kinds.get("quantity", 0), "category_records": kinds.get("category", 0),
                            "workout_records": kinds.get("workout", 0), "empty": False,
-                           "records_scanned": visited, "ecg_points": total_points})
+                           "records_scanned": visited, "ecg_points": total_points,
+                           "parse_stage_seconds": round(staged_at - started, 3),
+                           "db_write_seconds": round(write_done - write_started, 3)})
             with closing(store._connect()) as con, con:
                 con.execute("INSERT INTO meta(profile_id,key,value) VALUES(?,?,?) ON CONFLICT(profile_id,key) DO UPDATE SET value=excluded.value",
                             (store.profile_id, "last_import_result", json.dumps(result)))
@@ -198,9 +198,16 @@ async def _finish_worker(future):
             except Exception:
                 break
         if future.done() and not future.cancelled():
-            # Consume a worker error without replacing the caller cancellation.
             future.exception()
         raise
+
+
+def _schedule_refresh(hass: HomeAssistant, entry) -> None:
+    """Refresh derived entities after the import UI has already been released."""
+    hass.async_create_task(
+        entry.runtime_data.coordinator.async_refresh_from_store(),
+        name=f"{DOMAIN}-refresh-after-health-import-{entry.entry_id}",
+    )
 
 
 async def import_uploaded(hass: HomeAssistant, entry, file_id: str, *, include_sensitive: bool = False,
@@ -224,12 +231,12 @@ async def import_uploaded(hass: HomeAssistant, entry, file_id: str, *, include_s
         except HealthImportError:
             raise
         except Exception as err:
-            # Never return filenames, XML fragments or original medical data in errors.
             raise HealthImportError("invalid_import_file") from err
     result["scope"] = scope
-    result["elapsed_seconds"] = round(monotonic() - started, 1)
+    result["elapsed_seconds"] = round(monotonic() - started, 3)
+    result["refresh_scheduled"] = True
     await store.async_audit("import_health_file", object_type=f"local_file:{scope}")
-    await entry.runtime_data.coordinator.async_refresh_from_store()
+    _schedule_refresh(hass, entry)
     hass.bus.async_fire(IMPORT_EVENT, {"config_entry_id": entry.entry_id, **result})
     if result["ecg_new"]:
         hass.bus.async_fire(ECG_EVENT, {"config_entry_id": entry.entry_id, "new_records": result["ecg_new"],
@@ -283,7 +290,7 @@ def register_data_services(hass: HomeAssistant) -> None:
                 async with lock:
                     result = await _finish_worker(hass.async_add_executor_job(_import_sync, store, json_records(data), include, "all"))
                 await store.async_audit("import_health_samples", actor=call.context.user_id or "system")
-                await entry.runtime_data.coordinator.async_refresh_from_store()
+                _schedule_refresh(hass, entry)
                 hass.bus.async_fire(IMPORT_EVENT, {"config_entry_id": entry.entry_id, **result})
                 if result["ecg_new"]:
                     hass.bus.async_fire(ECG_EVENT, {"config_entry_id": entry.entry_id, "new_records": result["ecg_new"], "historical_import": True})
