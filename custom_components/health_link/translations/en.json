@@ -4,20 +4,22 @@
     "step": {
       "user": {
         "title": "Set up HealthLink",
-        "description": "No YAML, webhook URL, token or sensor IDs are required. HealthLink automatically discovers Apple Health sensors from the official Home Assistant iPhone app. Detected iPhones: {device_count}; available for this profile: {available_device_count}.",
+        "description": "Registered iPhones are listed even before Apple Health Sensors (Labs) is enabled. Found: {device_count}; unassigned: {available_device_count}. Create a profile per person and select only their phones. If no phone is available, create a waiting profile and connect it later in settings.",
         "data": {
           "profile_name": "Health profile name",
           "companion_device_ids": "iPhones for this profile"
         },
         "data_description": {
           "profile_name": "For example: My Health",
-          "companion_device_ids": "If one person uses multiple iPhones, you can select them together. Use a separate HealthLink profile for another person's iPhone."
+          "companion_device_ids": "This lists registered iPhones, not HA login accounts. Health collection starts only after Labs sensors and health read access are enabled on each phone."
         }
       }
     },
     "error": {
       "profile_name_required": "Enter a profile name.",
-      "device_already_used": "One or more selected iPhones already belong to another HealthLink profile."
+      "device_already_used": "One or more selected iPhones already belong to another HealthLink profile.",
+      "select_device": "Choose the iPhone(s) belonging to this profile.",
+      "device_not_found": "A selected device is no longer available. Check the list again."
     },
     "abort": {
       "already_configured": "The selected iPhone is already connected to HealthLink."
@@ -49,31 +51,69 @@
       }
     },
     "error": {
-      "device_already_used": "One or more selected iPhones already belong to another HealthLink profile."
+      "device_already_used": "One or more selected iPhones already belong to another HealthLink profile.",
+      "select_device": "Choose the iPhone(s) belonging to this profile.",
+      "device_not_found": "A selected device is no longer available. Check the list again."
     }
   },
   "entity": {
     "sensor": {
-      "last_sync": {"name": "Last sync"},
-      "sync_latency": {"name": "Sync latency"},
-      "data_confidence": {"name": "Data confidence"},
-      "steps_today": {"name": "Steps today"},
-      "active_energy_today": {"name": "Active energy today"},
-      "exercise_time_today": {"name": "Exercise time today"},
-      "last_sleep_duration": {"name": "Last sleep duration"},
-      "last_sleep_deep": {"name": "Last deep sleep"},
-      "last_sleep_rem": {"name": "Last REM sleep"},
-      "last_sleep_efficiency": {"name": "Last sleep efficiency"},
-      "recovery_context": {"name": "Recovery context"},
-      "recovery_confidence": {"name": "Recovery context confidence"},
-      "hrv_vs_baseline": {"name": "HRV vs personal baseline"},
-      "resting_hr_vs_baseline": {"name": "Resting heart rate vs personal baseline"},
-      "sleep_vs_baseline": {"name": "Sleep vs personal baseline"},
-      "activity_vs_baseline": {"name": "Activity vs personal baseline"}
+      "last_sync": {
+        "name": "Last sync"
+      },
+      "sync_latency": {
+        "name": "Sync latency"
+      },
+      "data_confidence": {
+        "name": "Data confidence"
+      },
+      "steps_today": {
+        "name": "Steps today"
+      },
+      "active_energy_today": {
+        "name": "Active energy today"
+      },
+      "exercise_time_today": {
+        "name": "Exercise time today"
+      },
+      "last_sleep_duration": {
+        "name": "Last sleep duration"
+      },
+      "last_sleep_deep": {
+        "name": "Last deep sleep"
+      },
+      "last_sleep_rem": {
+        "name": "Last REM sleep"
+      },
+      "last_sleep_efficiency": {
+        "name": "Last sleep efficiency"
+      },
+      "recovery_context": {
+        "name": "Recovery context"
+      },
+      "recovery_confidence": {
+        "name": "Recovery context confidence"
+      },
+      "hrv_vs_baseline": {
+        "name": "HRV vs personal baseline"
+      },
+      "resting_hr_vs_baseline": {
+        "name": "Resting heart rate vs personal baseline"
+      },
+      "sleep_vs_baseline": {
+        "name": "Sleep vs personal baseline"
+      },
+      "activity_vs_baseline": {
+        "name": "Activity vs personal baseline"
+      }
     },
     "binary_sensor": {
-      "data_stale": {"name": "Health data stale"},
-      "recovery_below_baseline": {"name": "Recovery below baseline"}
+      "data_stale": {
+        "name": "Health data stale"
+      },
+      "recovery_below_baseline": {
+        "name": "Recovery below baseline"
+      }
     }
   }
 }

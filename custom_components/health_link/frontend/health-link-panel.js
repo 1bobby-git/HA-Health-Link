@@ -10,18 +10,129 @@ class HealthLinkPanel extends HTMLElement {
     this._entryId = null;
     this._loading = false;
     this._error = null;
+    this._active = false;
+    this._requestId = 0;
+    this._refreshTimer = null;
+    this._refreshingProfiles = false;
+    this._brandUrl = null;
+    this._brandRefreshAt = 0;
+    this._brandPromise = null;
+    this._onFocus = () => { if (document.visibilityState !== "hidden") this._refreshProfiles(); };
   }
 
   set hass(value) {
     const first = !this._hass;
     this._hass = value;
-    if (first) this._load();
+    if (first && this._active) this._load();
   }
 
   set panel(value) { this._panel = value; }
 
   connectedCallback() {
+    if (this._active) return;
+    this._active = true;
     this._render();
+    window.addEventListener("focus", this._onFocus);
+    document.addEventListener("visibilitychange", this._onFocus);
+    this._refreshTimer = window.setInterval(this._onFocus, 15000);
+    if (this._hass) this._load();
+  }
+
+  disconnectedCallback() {
+    this._active = false;
+    this._requestId++;
+    this._loading = false;
+    window.clearInterval(this._refreshTimer);
+    this._refreshTimer = null;
+    window.removeEventListener("focus", this._onFocus);
+    document.removeEventListener("visibilitychange", this._onFocus);
+  }
+
+  async _loadBrand() {
+    if (this._brandPromise) return this._brandPromise;
+    if (Date.now() < this._brandRefreshAt) return;
+    this._brandPromise = (async () => {
+      try {
+        const result = await this._callWS({ type: "brands/access_token" });
+        if (typeof result.token !== "string" || !result.token) throw new Error("Brand token unavailable");
+        const query = new URLSearchParams({ token: result.token, v: "0.1.5" });
+        this._brandUrl = `/api/brands/integration/health_link/logo.png?${query}`;
+        this._brandRefreshAt = Date.now() + 30 * 60 * 1000;
+      } catch {
+        // Only public brand artwork falls back locally. Never use a long-lived HA token.
+        this._brandUrl = null;
+        this._brandRefreshAt = Date.now() + 60000;
+      }
+      if (this._active) this._updateLogo();
+    })();
+    try { await this._brandPromise; } finally { this._brandPromise = null; }
+  }
+
+  _logoSource() {
+    return this._brandUrl || "/health_link_static/brand/logo.png?v=0.1.5";
+  }
+
+  _updateLogo() {
+    const image = this.shadowRoot?.getElementById("healthLinkLogo");
+    if (!image) return;
+    image.src = this._logoSource();
+    image.onerror = () => {
+      image.onerror = null;
+      image.src = "/health_link_static/brand/logo.png?v=0.1.5";
+    };
+  }
+
+  _profileControls() {
+    const options = this._profiles.map(p => `<option value="${this._esc(p.config_entry_id)}" ${p.config_entry_id === this._entryId ? "selected" : ""}>${this._esc(p.title)}${p.available === false ? this._t(" · 연결 대기", " · waiting") : ""}</option>`).join("");
+    return `<select id="profile" aria-label="${this._t("건강 프로필 선택", "Select health profile")}" ${options ? "" : "disabled"}>${options || `<option>${this._t("등록된 프로필 없음", "No profiles")}</option>`}</select>
+      <button id="refreshProfiles" class="secondary">${this._t("새로고침", "Refresh")}</button>
+      <a class="manage" href="/config/integrations/integration/health_link">${this._t("프로필 추가·설정", "Add/manage profiles")}</a>`;
+  }
+
+  _bindProfileControls() {
+    this.shadowRoot.getElementById("profile")?.addEventListener("change", e => this._switchProfile(e.target.value));
+    this.shadowRoot.getElementById("refreshProfiles")?.addEventListener("click", () => this._load());
+  }
+
+  async _refreshProfiles() {
+    if (!this._active || !this._hass || this._loading || this._refreshingProfiles) return;
+    this._refreshingProfiles = true;
+    try {
+      const profiles = await this._callWS({ type: "health_link/status" });
+      if (!this._active) return;
+      const previous = this._profile();
+      this._profiles = profiles;
+      const selected = profiles.find(p => p.config_entry_id === this._entryId);
+      if (!selected || selected.available !== previous?.available) {
+        await this._switchProfile(selected?.config_entry_id || profiles[0]?.config_entry_id || null);
+      } else if (this._tab === "today" || this._tab === "connect") {
+        this._render();
+      } else {
+        // Do not wipe Composer inputs or timeline results during background refresh.
+        const controls = this.shadowRoot.getElementById("profileControls");
+        if (controls) { controls.innerHTML = this._profileControls(); this._bindProfileControls(); }
+      }
+      await this._loadBrand();
+    } catch {
+      // A temporarily disconnected HA must not clear another profile's form.
+    } finally { this._refreshingProfiles = false; }
+  }
+
+  async _switchProfile(id) {
+    this._entryId = id;
+    this._catalog = [];
+    this._composers = [];
+    this._error = null;
+    this._loading = true;
+    this._render();
+    const requestId = ++this._requestId;
+    try {
+      if (id && this._profile()?.available !== false) await this._loadProfileData(requestId);
+    } catch (err) {
+      if (requestId === this._requestId) this._error = String(err?.message || err);
+    } finally {
+      if (requestId === this._requestId && this._active) { this._loading = false; this._render(); }
+    }
   }
 
   get _ko() { return (this._hass?.language || "").toLowerCase().startsWith("ko"); }
@@ -33,28 +144,44 @@ class HealthLinkPanel extends HTMLElement {
   }
 
   async _load() {
-    if (!this._hass || this._loading) return;
-    this._loading = true; this._error = null; this._render();
+    if (!this._hass || this._loading || !this._active) return;
+    this._loading = true;
+    this._error = null;
+    const requestId = ++this._requestId;
+    this._render();
     try {
-      this._profiles = await this._callWS({ type: "health_link/status" });
-      if (!this._entryId && this._profiles.length) this._entryId = this._profiles[0].config_entry_id;
-      if (this._entryId) await this._loadProfileData();
+      const profiles = await this._callWS({ type: "health_link/status" });
+      if (!this._active || requestId !== this._requestId) return;
+      this._profiles = profiles;
+      if (!profiles.some(p => p.config_entry_id === this._entryId)) {
+        this._entryId = profiles[0]?.config_entry_id || null;
+        this._catalog = [];
+        this._composers = [];
+      }
+      if (this._entryId && this._profile()?.available !== false) await this._loadProfileData(requestId);
+      else { this._catalog = []; this._composers = []; }
+      await this._loadBrand();
     } catch (err) {
-      this._error = String(err?.message || err);
+      if (requestId === this._requestId) this._error = String(err?.message || err);
     } finally {
-      this._loading = false; this._render();
+      if (requestId === this._requestId && this._active) { this._loading = false; this._render(); }
     }
   }
 
-  async _loadProfileData() {
+  async _loadProfileData(requestId = this._requestId) {
     const id = this._entryId;
-    [this._catalog, this._composers] = await Promise.all([
+    const [catalog, composers] = await Promise.all([
       this._callWS({ type: "health_link/catalog/list", config_entry_id: id }),
       this._callWS({ type: "health_link/composer/list", config_entry_id: id }),
     ]);
+    // Responses for the previous person must never be shown under the new name.
+    if (this._active && id === this._entryId && requestId === this._requestId) {
+      this._catalog = catalog;
+      this._composers = composers;
+    }
   }
 
-  _profile() { return this._profiles.find(p => p.config_entry_id === this._entryId) || this._profiles[0]; }
+  _profile() { return this._profiles.find(p => p.config_entry_id === this._entryId); }
   _fmt(value, suffix = "") { return value === null || value === undefined ? "—" : `${value}${suffix}`; }
   _esc(value) { return String(value ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c])); }
 
@@ -64,6 +191,9 @@ class HealthLinkPanel extends HTMLElement {
     .wrap { max-width:1200px; margin:0 auto; padding:24px 20px 56px; }
     header { display:flex; gap:16px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:18px; }
     h1 { font-size:28px; margin:0; display:flex; align-items:center; gap:10px; }
+    h1 img { width: min(360px, 75vw); height: auto; display:block; }
+    #profileControls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .manage { color:var(--primary-color); padding:10px 6px; }
     h2 { font-size:20px; margin:24px 0 12px; }
     h3 { margin:0 0 8px; font-size:16px; }
     .sub { color:var(--secondary-text-color); font-size:14px; margin-top:5px; }
@@ -108,10 +238,9 @@ class HealthLinkPanel extends HTMLElement {
   _render() {
     if (!this.shadowRoot) return;
     const p = this._profile();
-    const profiles = this._profiles.map(x => `<option value="${this._esc(x.config_entry_id)}" ${x.config_entry_id===this._entryId?'selected':''}>${this._esc(x.title)}</option>`).join("");
     this.shadowRoot.innerHTML = `<style>${this._styles()}</style><main class="wrap">
-      <header><div><h1>❤ HealthLink</h1><div class="sub">${this._t('Apple 건강과 집을 가장 쉽게 연결합니다.','Connect Apple Health and your home, without the setup burden.')}</div></div>
-      ${this._profiles.length>1?`<select id="profile" aria-label="${this._t('건강 프로필','Health profile')}">${profiles}</select>`:''}</header>
+      <header><div><h1><img id="healthLinkLogo" src="${this._esc(this._logoSource())}" alt="HealthLink" width="600" height="200"></h1><div class="sub">${this._t('Apple 건강과 집을 가장 쉽게 연결합니다.','Connect Apple Health and your home, without the setup burden.')}</div></div>
+      <div id="profileControls">${this._profileControls()}</div></header>
       ${this._error?`<div class="error" role="alert">${this._esc(this._error)}</div>`:''}
       <nav class="tabs" role="tablist" aria-label="HealthLink">
         ${this._tabButton('today',this._t('오늘','Today'))}
@@ -124,12 +253,14 @@ class HealthLinkPanel extends HTMLElement {
       <section role="tabpanel">${this._loading?`<div class="empty">${this._t('불러오는 중…','Loading…')}</div>`:this._content(p)}</section>
     </main>`;
     this._bind();
+    this._updateLogo();
   }
 
   _tabButton(id,label){ return `<button role="tab" data-tab="${id}" aria-selected="${this._tab===id}">${label}</button>`; }
 
   _content(p) {
     if (!p) return `<div class="empty">${this._t('설정 → 기기 및 서비스에서 HealthLink를 먼저 추가하세요.','Add HealthLink in Settings → Devices & services.')}</div>`;
+    if (p.available === false) return `<div class="card setup"><h2>${this._esc(p.title)}</h2><p>${this._t('등록된 프로필입니다. 현재 연결 대기 또는 설정 확인이 필요합니다. 다른 사용자의 데이터로 대신 표시하지 않습니다.','This profile is registered but waiting for connection or setup. Data from another person is never substituted.')}</p><p class="note">${this._esc(p.entry_state || '')}</p><a class="manage" href="/config/integrations/integration/health_link">${this._t('HealthLink 설정 확인','Check HealthLink settings')}</a></div>`;
     if (this._tab === 'today') return this._today(p);
     if (this._tab === 'explorer') return this._explorer();
     if (this._tab === 'timeline') return this._timeline();
@@ -210,13 +341,13 @@ class HealthLinkPanel extends HTMLElement {
     let guide='';
     if(p.setup_state==='enable_health_sensors') guide=`<div class="card setup" style="margin-top:12px"><h3>${this._t('추가 앱 설치 없이 시작할 수 있습니다','Start without installing another app')}</h3><div class="note">${this._t('iPhone의 공식 Home Assistant 앱 → 설정 → 센서 → Apple 건강 센서에서 원하는 항목을 켜세요. HealthLink가 새 센서를 자동으로 감지하므로 HA 재시작, YAML, Webhook 입력은 필요 없습니다.','On iPhone, open the official Home Assistant app → Settings → Sensors → Apple Health Sensors and enable the items you want. HealthLink discovers new sensors automatically; no HA restart, YAML, or webhook entry is required.')}</div></div>`;
     if(p.setup_state==='choose_iphone') guide=`<div class="card setup" style="margin-top:12px"><h3>${this._t('내 iPhone만 선택해 주세요','Choose your iPhone')}</h3><div class="note">${this._t('가족의 건강 데이터가 섞이지 않도록 여러 iPhone이 있을 때만 한 번 선택이 필요합니다. 설정 → 기기 및 서비스 → HealthLink → 구성에서 선택할 수 있습니다.','A one-time choice is required only when multiple iPhones exist, so household health data is never mixed. Choose it in Settings → Devices & services → HealthLink → Configure.')}</div></div>`;
-    return `<h2>${this._t('연결 상태','Connection')}</h2><div class="card setup"><h3>${this._t('기본 모드: 별도 HealthLink iOS 앱 불필요','Standard mode: no separate HealthLink iOS app')}</h3><div class="note">${this._t('HealthLink 본체는 Home Assistant에 설치되는 HACS 통합입니다. 건강 데이터는 이미 설치한 공식 Home Assistant iPhone 앱이 Apple Health/HealthKit에서 읽어 HA 센서로 전달하고, HealthLink가 이를 자동 수집·조합·분석합니다.','HealthLink itself is a HACS integration running in Home Assistant. The official Home Assistant iPhone app reads Apple Health/HealthKit and publishes HA sensors; HealthLink automatically collects, combines, and analyzes them.')}</div></div>${guide}<div class="grid" style="margin-top:12px">${this._metric('Home Assistant Companion',companionState)}${this._metric('HealthLink Full Transport',p.bridge_ready?this._t('서버 수신 준비됨','Server endpoint ready'):this._t('사용 불가','Unavailable'))}${this._metric(this._t('소스','Source mode'),this._esc(p.source_mode||'auto'))}</div>
-      <h2>${this._t('전체 HealthKit 확장','Full HealthKit extension')}</h2><div class="card"><h3>${this._t('고급 기능 — 선택 사항','Advanced — optional')}</h3><div class="note">${this._t('ECG 원본, 세부 Workout/Route, 임상/FHIR처럼 공식 Companion 앱이 아직 전달하지 않는 HealthKit 객체까지 필요할 때만 추가 전송 계층이 필요합니다. 최우선 방향은 별도 앱을 강제하지 않고 공식 Home Assistant iOS 앱에 전체 HealthKit 전송 기능을 upstream 제안하는 것입니다. 독립 HealthLink iOS Bridge는 upstream으로 해결할 수 없을 때의 대체 경로입니다.','An additional transport layer is needed only for HealthKit objects the official Companion app does not yet deliver, such as raw ECG, richer Workout/Route, or clinical/FHIR data. The preferred direction is to upstream full HealthKit transport into the official Home Assistant iOS app so users are not forced to install another app. A standalone HealthLink iOS Bridge is a fallback only if upstream coverage cannot provide it.')}</div><div class="toolbar"><button id="pairInfo" class="secondary">${this._t('고급 전송 연결 정보 보기','Show advanced transport pairing info')}</button></div><div id="pairResult"></div></div>`;
+    return `<h2>${this._t('연결 상태','Connection')}</h2><div class="card setup"><h3>${this._t('기본 모드: 별도 HealthLink iOS 앱 불필요','Standard mode: no separate HealthLink iOS app')}</h3><div class="note">${this._t('HealthLink 본체는 Home Assistant에 설치되는 HACS 통합입니다. 건강 데이터는 이미 설치한 공식 Home Assistant iPhone 앱이 Apple Health/HealthKit에서 읽어 HA 센서로 전달하고, HealthLink가 이를 자동 수집·조합·분석합니다.','HealthLink itself is a HACS integration running in Home Assistant. The official Home Assistant iPhone app reads Apple Health/HealthKit and publishes HA sensors; HealthLink automatically collects, combines, and analyzes them.')}</div></div>${guide}<div class="grid" style="margin-top:12px">${this._metric('Home Assistant Companion',companionState)}${this._metric(this._t('연결 iPhone','Connected iPhones'),p.companion_device_count||0)}${this._metric(this._t('소스','Source mode'),this._esc(p.source_mode||'auto'))}</div>
+      <div class="card" style="margin-top:12px"><div class="note">${this._t('데이터 소스는 공식 Home Assistant iOS 앱의 Apple 건강 센서(Labs)입니다. 별도 HealthLink 앱은 없으며, 해당 iPhone이 HA로 보낸 항목만 가져옵니다. 한 프로필에는 같은 사람의 iPhone만 연결하세요.','Data comes from Apple Health Sensors (Labs) in the official Home Assistant iOS app. No separate HealthLink app is required. Connect only phones belonging to the same person to each profile.')}</div></div>`;
   }
 
   _bind() {
     this.shadowRoot.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{this._tab=b.dataset.tab;this._render();}));
-    this.shadowRoot.getElementById('profile')?.addEventListener('change',async e=>{this._entryId=e.target.value;this._loading=true;this._render();try{await this._loadProfileData();}finally{this._loading=false;this._render();}});
+    this._bindProfileControls();
     this.shadowRoot.querySelectorAll('#refresh').forEach(b=>b.addEventListener('click',()=>this._load()));
     const search=this.shadowRoot.getElementById('search'); if(search) search.addEventListener('input',()=>{const q=search.value.toLowerCase();this.shadowRoot.querySelectorAll('#catalogBody tr').forEach(r=>r.hidden=!r.dataset.name.includes(q));});
     this.shadowRoot.querySelectorAll('[data-expose]').forEach(b=>b.addEventListener('click',async()=>{const item=this._catalog[Number(b.dataset.expose)];b.disabled=true;try{await this._callWS({type:'health_link/catalog/expose',config_entry_id:this._entryId,type_id:item.type_id,exposed:!Boolean(item.exposed)});item.exposed=item.exposed?0:1;this._render();}catch(e){this._error=String(e.message||e);this._render();}}));

@@ -23,6 +23,11 @@ from homeassistant.helpers.selector import (
 )
 
 from .companion import discover_companion_devices
+from .profile_support import (
+    normalize_device_ids as _normalize_device_ids,
+    entry_device_ids as _entry_companion_device_ids,
+    devices_in_use as _devices_in_use,
+)
 from .const import (
     CONF_BASELINE_WINDOW,
     CONF_BRIDGE_SECRET,
@@ -50,55 +55,6 @@ from .const import (
     DEFAULT_WRITE_BACK,
     DOMAIN,
 )
-
-
-def _normalize_device_ids(value: Any) -> list[str]:
-    """Normalize one or many Companion device ids while keeping order stable."""
-    if value is None:
-        return []
-    if isinstance(value, str):
-        return [value] if value else []
-    if isinstance(value, Iterable):
-        return list(dict.fromkeys(str(item) for item in value if item))
-    return []
-
-
-def _entry_companion_device_ids(entry: ConfigEntry) -> set[str]:
-    """Return all persisted or currently auto-bound Companion devices for an entry."""
-    for container in (entry.options, entry.data):
-        configured = _normalize_device_ids(container.get(CONF_COMPANION_DEVICE_IDS))
-        if configured:
-            return set(configured)
-
-    legacy = entry.options.get(CONF_COMPANION_DEVICE_ID) or entry.data.get(
-        CONF_COMPANION_DEVICE_ID
-    )
-    if legacy:
-        return {str(legacy)}
-
-    runtime = getattr(entry, "runtime_data", None)
-    companion = getattr(runtime, "companion", None) if runtime is not None else None
-    bound_many = getattr(companion, "bound_device_ids", None)
-    if bound_many:
-        return {str(device_id) for device_id in bound_many}
-    bound_one = getattr(companion, "bound_device_id", None)
-    return {str(bound_one)} if bound_one else set()
-
-
-def _devices_in_use(
-    hass: HomeAssistant,
-    device_ids: Iterable[str],
-    *,
-    exclude_entry_id: str | None = None,
-) -> set[str]:
-    """Return requested devices already assigned to another HealthLink profile."""
-    requested = {str(device_id) for device_id in device_ids}
-    conflicts: set[str] = set()
-    for entry in hass.config_entries.async_entries(DOMAIN):
-        if entry.entry_id == exclude_entry_id:
-            continue
-        conflicts.update(requested & _entry_companion_device_ids(entry))
-    return conflicts
 
 
 def _device_selector(devices: dict[str, str], *, multiple: bool) -> SelectSelector:
@@ -148,10 +104,14 @@ class HealthLinkConfigFlow(ConfigFlow, domain=DOMAIN):
                 selected = _normalize_device_ids(
                     user_input.get(CONF_COMPANION_DEVICE_IDS)
                 )
-                if not selected and len(available) == 1:
+                if CONF_COMPANION_DEVICE_IDS not in user_input and len(available) == 1:
                     selected = [next(iter(available))]
 
-                if _devices_in_use(self.hass, selected):
+                if available and not selected:
+                    errors[CONF_COMPANION_DEVICE_IDS] = "select_device"
+                elif any(device_id not in devices for device_id in selected):
+                    errors[CONF_COMPANION_DEVICE_IDS] = "device_not_found"
+                elif _devices_in_use(self.hass, selected):
                     errors[CONF_COMPANION_DEVICE_IDS] = "device_already_used"
                 else:
                     profile_id = f"p_{secrets.token_hex(12)}"
@@ -185,9 +145,9 @@ class HealthLinkConfigFlow(ConfigFlow, domain=DOMAIN):
         schema: dict[Any, Any] = {
             vol.Required(CONF_PROFILE_NAME, default=default_name): str
         }
-        if len(available) > 1:
+        if available:
             schema[
-                vol.Required(CONF_COMPANION_DEVICE_IDS, default=[])
+                vol.Required(CONF_COMPANION_DEVICE_IDS, default=list(available) if len(available) == 1 else [])
             ] = _device_selector(available, multiple=True)
 
         return self.async_show_form(
@@ -227,6 +187,14 @@ class HealthLinkOptionsFlow(OptionsFlowWithReload):
             )
         }
 
+        # Keep previously selected, temporarily offline devices visible in options.
+        from homeassistant.helpers import device_registry as dr
+        registry = dr.async_get(self.hass)
+        for device_id in current_ids:
+            if device_id not in selectable:
+                device = registry.async_get(device_id)
+                selectable[device_id] = (device.name_by_user or device.name) if device else device_id
+
         if user_input is not None:
             selected = _normalize_device_ids(
                 user_input.get(CONF_COMPANION_DEVICE_IDS, current_ids)
@@ -238,6 +206,8 @@ class HealthLinkOptionsFlow(OptionsFlowWithReload):
             )
             if conflicts:
                 errors[CONF_COMPANION_DEVICE_IDS] = "device_already_used"
+            elif any(device_id not in selectable for device_id in selected):
+                errors[CONF_COMPANION_DEVICE_IDS] = "device_not_found"
             else:
                 self._options.update(user_input)
                 self._options[CONF_COMPANION_DEVICE_IDS] = selected
@@ -288,6 +258,11 @@ class HealthLinkOptionsFlow(OptionsFlowWithReload):
     ) -> ConfigFlowResult:
         if user_input is not None:
             self._options.update(user_input)
+            # Re-check on final save: another profile may have claimed a phone
+            # while this two-step dialog was open.
+            selected = _normalize_device_ids(self._options.get(CONF_COMPANION_DEVICE_IDS))
+            if _devices_in_use(self.hass, selected, exclude_entry_id=self.config_entry.entry_id):
+                return await self.async_step_general({CONF_COMPANION_DEVICE_IDS: selected})
             return self.async_create_entry(title="", data=self._options)
 
         return self.async_show_form(

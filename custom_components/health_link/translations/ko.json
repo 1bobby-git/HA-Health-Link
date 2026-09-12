@@ -4,20 +4,22 @@
     "step": {
       "user": {
         "title": "HealthLink 시작하기",
-        "description": "YAML, Webhook 주소, 토큰, 센서 ID 입력은 필요 없습니다. 공식 Home Assistant iPhone 앱의 Apple 건강 센서를 자동으로 찾습니다. 감지된 iPhone: {device_count}개, 새 프로필에 연결 가능한 iPhone: {available_device_count}개.",
+        "description": "Home Assistant에 등록된 iPhone을 찾습니다. Apple 건강 센서(Labs)를 아직 켜지 않은 기기도 표시됩니다. 감지된 기기: {device_count}개, 다른 프로필에 연결되지 않은 기기: {available_device_count}개. 사람마다 프로필을 만들고 같은 사람의 iPhone만 선택하세요. 기기가 없으면 프로필을 먼저 만든 후 설정에서 연결할 수 있습니다.",
         "data": {
           "profile_name": "건강 프로필 이름",
           "companion_device_ids": "이 프로필에 연결할 iPhone"
         },
         "data_description": {
           "profile_name": "예: 내 건강, 원바비",
-          "companion_device_ids": "같은 사람의 iPhone이 여러 대라면 함께 선택할 수 있습니다. 다른 사람의 iPhone은 별도 HealthLink 프로필로 등록하는 것을 권장합니다."
+          "companion_device_ids": "HA 사용자 계정 목록이 아니라 등록된 iPhone 목록입니다. 건강 데이터 수집은 각 iPhone에서 Labs 센서와 읽기 권한을 허용한 후 시작됩니다."
         }
       }
     },
     "error": {
       "profile_name_required": "프로필 이름을 입력하세요.",
-      "device_already_used": "선택한 iPhone 중 하나 이상이 이미 다른 HealthLink 건강 프로필에 연결되어 있습니다."
+      "device_already_used": "선택한 iPhone 중 하나 이상이 이미 다른 HealthLink 건강 프로필에 연결되어 있습니다.",
+      "select_device": "이 프로필에 연결할 본인의 iPhone을 선택하세요.",
+      "device_not_found": "선택한 기기를 현재 찾을 수 없습니다. 목록을 다시 확인하세요."
     },
     "abort": {
       "already_configured": "선택한 iPhone은 이미 HealthLink에 연결되어 있습니다."
@@ -49,31 +51,69 @@
       }
     },
     "error": {
-      "device_already_used": "선택한 iPhone 중 하나 이상이 이미 다른 HealthLink 건강 프로필에 연결되어 있습니다."
+      "device_already_used": "선택한 iPhone 중 하나 이상이 이미 다른 HealthLink 건강 프로필에 연결되어 있습니다.",
+      "select_device": "이 프로필에 연결할 본인의 iPhone을 선택하세요.",
+      "device_not_found": "선택한 기기를 현재 찾을 수 없습니다. 목록을 다시 확인하세요."
     }
   },
   "entity": {
     "sensor": {
-      "last_sync": {"name": "최근 동기화"},
-      "sync_latency": {"name": "동기화 지연"},
-      "data_confidence": {"name": "데이터 신뢰도"},
-      "steps_today": {"name": "오늘 걸음"},
-      "active_energy_today": {"name": "오늘 활동 에너지"},
-      "exercise_time_today": {"name": "오늘 운동 시간"},
-      "last_sleep_duration": {"name": "최근 수면 시간"},
-      "last_sleep_deep": {"name": "최근 깊은 수면"},
-      "last_sleep_rem": {"name": "최근 REM 수면"},
-      "last_sleep_efficiency": {"name": "최근 수면 효율"},
-      "recovery_context": {"name": "회복 컨텍스트"},
-      "recovery_confidence": {"name": "회복 컨텍스트 신뢰도"},
-      "hrv_vs_baseline": {"name": "HRV 개인 기준선 대비"},
-      "resting_hr_vs_baseline": {"name": "안정 심박 개인 기준선 대비"},
-      "sleep_vs_baseline": {"name": "수면 개인 기준선 대비"},
-      "activity_vs_baseline": {"name": "활동 개인 기준선 대비"}
+      "last_sync": {
+        "name": "최근 동기화"
+      },
+      "sync_latency": {
+        "name": "동기화 지연"
+      },
+      "data_confidence": {
+        "name": "데이터 신뢰도"
+      },
+      "steps_today": {
+        "name": "오늘 걸음"
+      },
+      "active_energy_today": {
+        "name": "오늘 활동 에너지"
+      },
+      "exercise_time_today": {
+        "name": "오늘 운동 시간"
+      },
+      "last_sleep_duration": {
+        "name": "최근 수면 시간"
+      },
+      "last_sleep_deep": {
+        "name": "최근 깊은 수면"
+      },
+      "last_sleep_rem": {
+        "name": "최근 REM 수면"
+      },
+      "last_sleep_efficiency": {
+        "name": "최근 수면 효율"
+      },
+      "recovery_context": {
+        "name": "회복 컨텍스트"
+      },
+      "recovery_confidence": {
+        "name": "회복 컨텍스트 신뢰도"
+      },
+      "hrv_vs_baseline": {
+        "name": "HRV 개인 기준선 대비"
+      },
+      "resting_hr_vs_baseline": {
+        "name": "안정 심박 개인 기준선 대비"
+      },
+      "sleep_vs_baseline": {
+        "name": "수면 개인 기준선 대비"
+      },
+      "activity_vs_baseline": {
+        "name": "활동 개인 기준선 대비"
+      }
     },
     "binary_sensor": {
-      "data_stale": {"name": "건강 데이터 지연"},
-      "recovery_below_baseline": {"name": "회복 상태가 평소보다 낮음"}
+      "data_stale": {
+        "name": "건강 데이터 지연"
+      },
+      "recovery_below_baseline": {
+        "name": "회복 상태가 평소보다 낮음"
+      }
     }
   }
 }

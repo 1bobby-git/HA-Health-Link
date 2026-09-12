@@ -18,7 +18,8 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 
-from .const import COMPANION_METRICS
+from .const import COMPANION_METRICS, CONF_COMPANION_DEVICE_IDS, DOMAIN
+from .profile_support import discover_ios_devices, devices_in_use
 
 _LOGGER = logging.getLogger(__name__)
 _FLUSH_DELAY_SECONDS = 1.0
@@ -39,21 +40,8 @@ def _metric_unique_id(entry: er.RegistryEntry) -> str | None:
 
 
 def discover_companion_devices(hass: HomeAssistant) -> dict[str, str]:
-    """Discover iOS Companion devices that currently expose Apple Health sensors."""
-    registry = er.async_get(hass)
-    devices: dict[str, str] = {}
-    for entry in registry.entities.values():
-        if entry.platform != "mobile_app" or entry.domain != "sensor" or not entry.device_id:
-            continue
-        if _metric_unique_id(entry):
-            devices.setdefault(entry.device_id, entry.device_id)
-
-    device_registry = dr.async_get(hass)
-    for device_id in list(devices):
-        device = device_registry.async_get(device_id)
-        if device:
-            devices[device_id] = device.name_by_user or device.name or device_id
-    return devices
+    """List registered iOS devices, even before Apple Health Labs is enabled."""
+    return discover_ios_devices(hass)
 
 
 def _normalize_device_ids(device_ids: str | Iterable[str] | None) -> frozenset[str]:
@@ -90,7 +78,10 @@ class CompanionImporter:
         """Start automatic discovery and ingestion."""
         await self._async_rescan(import_now=True)
         self._unsubs.append(
-            self.hass.bus.async_listen(EVENT_STATE_CHANGED, self._state_changed)
+            self.hass.bus.async_listen(
+                EVENT_STATE_CHANGED, self._state_changed,
+                event_filter=self._state_reported_filter,
+            )
         )
         # Health sensors can legitimately report the same value again at a later time.
         # EVENT_STATE_REPORTED preserves those samples even when the state text is unchanged.
@@ -146,23 +137,36 @@ class CompanionImporter:
     async def _async_rescan(self, *, import_now: bool) -> None:
         registry = er.async_get(self.hass)
         effective_device_ids = set(self.device_ids or self._bound_device_ids)
+        profile_entry = self.runtime.coordinator.entry
         if not effective_device_ids:
             devices = discover_companion_devices(self.hass)
-            if len(devices) == 1:
-                effective_device_ids = {next(iter(devices))}
-                self._bound_device_ids = set(effective_device_ids)
-                self._needs_device_selection = False
-            elif len(devices) > 1:
-                self._entity_map = {}
-                self._needs_device_selection = True
-                return
+            available = set(devices) - devices_in_use(
+                self.hass, devices, exclude_entry_id=profile_entry.entry_id
+            )
+            # An explicit empty options selection means disconnected. Never undo it.
+            explicit_empty = profile_entry.options.get(CONF_COMPANION_DEVICE_IDS) == []
+            profiles = self.hass.config_entries.async_entries(DOMAIN)
+            if not explicit_empty and len(profiles) == 1 and len(available) == 1:
+                effective_device_ids = available
+                # Persist the choice before any await, so reloads cannot change people.
+                self.hass.config_entries.async_update_entry(
+                    profile_entry,
+                    data={**profile_entry.data, CONF_COMPANION_DEVICE_IDS: sorted(available)},
+                )
             else:
                 self._entity_map = {}
-                self._needs_device_selection = False
+                self._pending.clear()
+                self._needs_device_selection = bool(devices)
                 return
-        else:
-            self._bound_device_ids = set(effective_device_ids)
-            self._needs_device_selection = False
+        if devices_in_use(
+            self.hass, effective_device_ids, exclude_entry_id=profile_entry.entry_id
+        ):
+            self._entity_map = {}
+            self._pending.clear()
+            self._needs_device_selection = True
+            return
+        self._bound_device_ids = set(effective_device_ids)
+        self._needs_device_selection = False
 
         mapping: dict[str, str] = {}
         for entry in registry.entities.values():
@@ -174,6 +178,7 @@ class CompanionImporter:
             if uid:
                 mapping[entry.entity_id] = uid
         self._entity_map = mapping
+        self._pending = {key: item for key, item in self._pending.items() if key in mapping}
 
         if not import_now:
             return
@@ -314,5 +319,8 @@ class CompanionImporter:
                 "device_name": device_name,
                 "bundle_identifier": "io.robbie.HomeAssistant",
             },
-            "metadata": {"entity_id": state.entity_id},
+            "metadata": {
+                "entity_id": state.entity_id,
+                "companion_device_id": entry.device_id if entry else None,
+            },
         }
