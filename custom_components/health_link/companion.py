@@ -7,6 +7,7 @@ import hashlib
 import logging
 from typing import Any
 
+from homeassistant.components.recorder import get_instance, history
 from homeassistant.const import (
     EVENT_STATE_CHANGED,
     EVENT_STATE_REPORTED,
@@ -195,6 +196,43 @@ class CompanionImporter:
             await self.runtime.store.async_ingest(items)
             await self.runtime.coordinator.async_refresh_from_store()
 
+    async def async_refresh_now(self) -> dict[str, int]:
+        """Rescan current HA Apple Health entity states; this does not wake iOS."""
+        before = (await self.runtime.store.async_status()).get("sample_count", 0)
+        await self._async_rescan(import_now=True)
+        after = (await self.runtime.store.async_status()).get("sample_count", 0)
+        return {"imported": max(0, int(after) - int(before)), "sensor_count": self.sensor_count}
+
+    async def async_import_recorder_history(self, days: int = 30) -> dict[str, int]:
+        """Backfill HealthLink from HA Recorder history of bound Apple Health sensors."""
+        await self._async_rescan(import_now=False)
+        entity_ids = list(self._entity_map)
+        if not entity_ids:
+            return {"imported": 0, "entities": 0, "days": days}
+        from datetime import datetime, timezone
+        end = datetime.now(timezone.utc)
+        start = end - timedelta(days=max(1, min(int(days), 3650)))
+        states = await get_instance(self.hass).async_add_executor_job(
+            history.get_significant_states, self.hass, start, end, entity_ids, None, True, False, False, True, False
+        )
+        registry = er.async_get(self.hass)
+        items = []
+        # Keep a call-local UUID set because historical rows can repeat.
+        seen: set[str] = set()
+        for entity_id, values in states.items():
+            uid = self._entity_map.get(entity_id)
+            entry = registry.async_get(entity_id)
+            if not uid:
+                continue
+            for state in values:
+                item = self._state_to_item(state, uid, entry)
+                if item is not None and item["sample_uuid"] not in seen:
+                    seen.add(item["sample_uuid"]); items.append(item)
+        result = await self.runtime.store.async_ingest(items) if items else {"inserted": 0, "updated": 0, "deleted": 0}
+        if items:
+            await self.runtime.coordinator.async_refresh_from_store()
+        return {"imported": int(result.get("inserted", 0)), "updated": int(result.get("updated", 0)), "entities": len(entity_ids), "days": days}
+
     @property
     def bound_device_ids(self) -> tuple[str, ...]:
         """Return all Companion devices currently bound to this health profile."""
@@ -322,5 +360,7 @@ class CompanionImporter:
             "metadata": {
                 "entity_id": state.entity_id,
                 "companion_device_id": entry.device_id if entry else None,
+                "time_semantics": "home_assistant_reported_at",
+                "healthkit_sample_timestamp_available": False,
             },
         }

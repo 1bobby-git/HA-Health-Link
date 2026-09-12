@@ -1,32 +1,23 @@
 recalculate:
   name: Recalculate HealthLink
-  description: Recalculate HealthLink derived context values from the local store.
-  fields:
+  description: Recalculate derived HealthLink context values from the private local store.
+  fields: &profile
     config_entry_id:
-      name: Profile
-      description: Optional HealthLink config entry. Only needed when multiple profiles exist.
+      name: Health profile
       selector:
         config_entry:
           integration: health_link
 refresh_baseline:
   name: Refresh personal baseline
-  description: Recalculate personal baseline context from locally stored health data.
-  fields:
-    config_entry_id:
-      selector:
-        config_entry:
-          integration: health_link
+  description: Recalculate personal baseline context from locally stored Apple Health records.
+  fields: *profile
 sync_request:
-  name: Request HealthLink sync
-  description: Ask connected HealthLink clients to perform a sync when supported.
-  fields:
-    config_entry_id:
-      selector:
-        config_entry:
-          integration: health_link
+  name: Refresh from current Apple Health entities
+  description: Import the latest values already delivered by the official Home Assistant iOS Apple Health Sensors (Labs). This does not wake iOS or force HealthKit to sync.
+  fields: *profile
 backfill_request:
-  name: Request history backfill
-  description: Request historical data from a HealthLink Bridge when supported.
+  name: Import Apple Health history from Recorder
+  description: Import retained history of the selected iPhone Apple Health entities from Home Assistant Recorder into HealthLink's private store.
   fields:
     config_entry_id:
       selector:
@@ -36,71 +27,150 @@ backfill_request:
       required: true
       default: 30
       selector:
-        number:
-          min: 1
-          max: 3650
-          mode: box
+        number: {min: 1, max: 3650, mode: box}
+get_daily_report:
+  name: Get daily wellness report
+  description: Return HealthLink-only personal baseline highlights, user goal progress, data confidence and source information.
+  fields: *profile
+get_trends:
+  name: Get personal trends
+  description: Return locally observed daily medians and data coverage for supported Apple Health records.
+  fields:
+    config_entry_id:
+      selector:
+        config_entry: {integration: health_link}
+    days:
+      default: 28
+      selector:
+        number: {min: 7, max: 365, mode: box}
+set_goal:
+  name: Set personal wellness goal
+  description: Set or clear a user-defined goal. A target of 0 disables the goal. HealthLink does not choose medical or population targets for you.
+  fields:
+    config_entry_id:
+      selector:
+        config_entry: {integration: health_link}
+    goal:
+      required: true
+      selector:
+        select:
+          options: [steps, exercise_minutes, active_energy, water_ml, sleep_minutes]
+    target:
+      required: true
+      selector:
+        number: {min: 0, max: 100000, mode: box}
+evaluate_routine:
+  name: Evaluate wellness routine
+  description: Return whether a user-defined Home Assistant routine is suggested by personal HealthLink context. It never runs devices by itself.
+  fields:
+    config_entry_id:
+      selector:
+        config_entry: {integration: health_link}
+    routine:
+      required: true
+      selector:
+        select:
+          options: [evening_recovery, activity_nudge, hydration_check, sleep_prep]
+    min_confidence:
+      default: 60
+      selector:
+        number: {min: 0, max: 100, unit_of_measurement: "%", mode: slider}
+record_routine:
+  name: Record routine outcome
+  description: Record that a HealthLink-assisted Home Assistant routine was executed, skipped or cancelled for later comparison.
+  fields:
+    config_entry_id:
+      selector:
+        config_entry: {integration: health_link}
+    routine:
+      required: true
+      selector: {text: {}}
+    outcome:
+      required: true
+      selector:
+        select:
+          options: [executed, skipped, cancelled]
+    note:
+      selector: {text: {multiline: true}}
+get_routine_history:
+  name: Get routine history
+  description: Return recent HealthLink routine outcomes for dashboards and automation evaluation.
+  fields:
+    config_entry_id:
+      selector:
+        config_entry: {integration: health_link}
+    routine:
+      selector: {text: {}}
+    limit:
+      default: 50
+      selector:
+        number: {min: 1, max: 200, mode: box}
+analyze_environment:
+  name: Analyze a home environment window
+  description: Summarize a numeric Home Assistant environment sensor over a selected recent window. Results are observational only.
+  fields:
+    config_entry_id:
+      selector:
+        config_entry: {integration: health_link}
+    entity_id:
+      required: true
+      selector:
+        entity:
+          domain: sensor
+    hours:
+      default: 8
+      selector:
+        number: {min: 1, max: 720, unit_of_measurement: h, mode: box}
+    lower:
+      selector: {number: {mode: box}}
+    upper:
+      selector: {number: {mode: box}}
 purge:
   name: Purge old local health data
   description: Permanently remove HealthLink samples older than the selected retention age.
   fields:
     config_entry_id:
       selector:
-        config_entry:
-          integration: health_link
+        config_entry: {integration: health_link}
     days:
       required: true
       selector:
-        number:
-          min: 0
-          max: 3650
-          mode: box
+        number: {min: 0, max: 3650, mode: box}
 enable_metric:
   name: Expose metric as entity
-  description: Enable a HealthKit metric for Home Assistant entity creation.
+  description: Enable an imported Apple Health metric as an additional Home Assistant entity.
   fields:
     config_entry_id:
       selector:
-        config_entry:
-          integration: health_link
+        config_entry: {integration: health_link}
     type_id:
       required: true
-      selector:
-        text:
+      selector: {text: {}}
 disable_metric:
   name: Hide metric entity
-  description: Stop exposing a HealthKit metric as a Home Assistant entity. Raw local data is retained.
+  description: Stop exposing an imported Apple Health metric as a HealthLink entity; local history is retained.
   fields:
     config_entry_id:
       selector:
-        config_entry:
-          integration: health_link
+        config_entry: {integration: health_link}
     type_id:
       required: true
-      selector:
-        text:
+      selector: {text: {}}
 export:
   name: Export health data
   description: Export selected HealthLink data into a private Home Assistant config folder, never /www.
   fields:
     config_entry_id:
       selector:
-        config_entry:
-          integration: health_link
+        config_entry: {integration: health_link}
     format:
       required: true
       default: json
       selector:
-        select:
-          options:
-            - json
-            - csv
+        select: {options: [json, csv]}
     type_id:
-      selector:
-        text:
+      selector: {text: {}}
     start:
-      selector:
-        text:
+      selector: {text: {}}
     end:
-      selector:
-        text:
+      selector: {text: {}}

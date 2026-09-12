@@ -21,16 +21,24 @@ class HealthLinkSensorDescription(SensorEntityDescription):
     value_fn: Callable[[dict[str,Any]], Any]
 
 DESCRIPTIONS = (
+    HealthLinkSensorDescription(key="steps_goal_progress",translation_key="steps_goal_progress",native_unit_of_measurement=PERCENTAGE,icon="mdi:target",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:((d.get("goal_progress") or {}).get("steps") or {}).get("progress")),
+    HealthLinkSensorDescription(key="exercise_goal_progress",translation_key="exercise_goal_progress",native_unit_of_measurement=PERCENTAGE,icon="mdi:target",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:((d.get("goal_progress") or {}).get("exercise_minutes") or {}).get("progress")),
+    HealthLinkSensorDescription(key="active_energy_goal_progress",translation_key="active_energy_goal_progress",native_unit_of_measurement=PERCENTAGE,icon="mdi:target",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:((d.get("goal_progress") or {}).get("active_energy") or {}).get("progress")),
+    HealthLinkSensorDescription(key="water_goal_progress",translation_key="water_goal_progress",native_unit_of_measurement=PERCENTAGE,icon="mdi:cup-water",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:((d.get("goal_progress") or {}).get("water_ml") or {}).get("progress")),
+    HealthLinkSensorDescription(key="sleep_goal_progress",translation_key="sleep_goal_progress",native_unit_of_measurement=PERCENTAGE,icon="mdi:sleep",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:((d.get("goal_progress") or {}).get("sleep_minutes") or {}).get("progress")),
+    HealthLinkSensorDescription(key="steps_vs_same_time_baseline",translation_key="steps_vs_same_time_baseline",native_unit_of_measurement=PERCENTAGE,icon="mdi:chart-timeline-variant",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("steps_vs_same_time_baseline")),
+    HealthLinkSensorDescription(key="daily_goal_context",translation_key="daily_goal_context",icon="mdi:target-account",value_fn=lambda d:d.get("daily_goal_context")),
+    HealthLinkSensorDescription(key="daily_focus",translation_key="daily_focus",icon="mdi:lightbulb-on-outline",value_fn=lambda d:d.get("daily_focus")),
     HealthLinkSensorDescription(key="last_sync",translation_key="last_sync",icon="mdi:sync",device_class=SensorDeviceClass.TIMESTAMP,entity_category=EntityCategory.DIAGNOSTIC,value_fn=lambda d:d.get("last_sync")),
     HealthLinkSensorDescription(key="sync_latency",translation_key="sync_latency",native_unit_of_measurement=UnitOfTime.SECONDS,icon="mdi:timer-sync-outline",entity_category=EntityCategory.DIAGNOSTIC,value_fn=lambda d:d.get("sync_latency_seconds")),
     HealthLinkSensorDescription(key="data_confidence",translation_key="data_confidence",native_unit_of_measurement=PERCENTAGE,icon="mdi:shield-check-outline",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("data_confidence")),
-    HealthLinkSensorDescription(key="steps_today",translation_key="steps_today",native_unit_of_measurement="steps",icon="mdi:walk",state_class=SensorStateClass.TOTAL_INCREASING,value_fn=lambda d:d.get("steps_today")),
-    HealthLinkSensorDescription(key="active_energy_today",translation_key="active_energy_today",native_unit_of_measurement="kcal",icon="mdi:fire",state_class=SensorStateClass.TOTAL_INCREASING,value_fn=lambda d:d.get("active_energy_today")),
-    HealthLinkSensorDescription(key="exercise_time_today",translation_key="exercise_time_today",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:timer-outline",state_class=SensorStateClass.TOTAL_INCREASING,value_fn=lambda d:d.get("exercise_time_today")),
-    HealthLinkSensorDescription(key="last_sleep_duration",translation_key="last_sleep_duration",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:sleep",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_duration")),
-    HealthLinkSensorDescription(key="last_sleep_deep",translation_key="last_sleep_deep",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:sleep",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_deep")),
-    HealthLinkSensorDescription(key="last_sleep_rem",translation_key="last_sleep_rem",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:brain",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_rem")),
-    HealthLinkSensorDescription(key="last_sleep_efficiency",translation_key="last_sleep_efficiency",native_unit_of_measurement=PERCENTAGE,icon="mdi:bed-clock",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_efficiency")),
+    HealthLinkSensorDescription(key="steps_today",entity_registry_enabled_default=False,translation_key="steps_today",native_unit_of_measurement="steps",icon="mdi:walk",state_class=SensorStateClass.TOTAL_INCREASING,value_fn=lambda d:d.get("steps_today")),
+    HealthLinkSensorDescription(key="active_energy_today",entity_registry_enabled_default=False,translation_key="active_energy_today",native_unit_of_measurement="kcal",icon="mdi:fire",state_class=SensorStateClass.TOTAL_INCREASING,value_fn=lambda d:d.get("active_energy_today")),
+    HealthLinkSensorDescription(key="exercise_time_today",entity_registry_enabled_default=False,translation_key="exercise_time_today",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:timer-outline",state_class=SensorStateClass.TOTAL_INCREASING,value_fn=lambda d:d.get("exercise_time_today")),
+    HealthLinkSensorDescription(key="last_sleep_duration",entity_registry_enabled_default=False,translation_key="last_sleep_duration",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:sleep",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_duration")),
+    HealthLinkSensorDescription(key="last_sleep_deep",entity_registry_enabled_default=False,translation_key="last_sleep_deep",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:sleep",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_deep")),
+    HealthLinkSensorDescription(key="last_sleep_rem",entity_registry_enabled_default=False,translation_key="last_sleep_rem",native_unit_of_measurement=UnitOfTime.MINUTES,icon="mdi:brain",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_rem")),
+    HealthLinkSensorDescription(key="last_sleep_efficiency",entity_registry_enabled_default=False,translation_key="last_sleep_efficiency",native_unit_of_measurement=PERCENTAGE,icon="mdi:bed-clock",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("sleep_efficiency")),
     HealthLinkSensorDescription(key="recovery_context",translation_key="recovery_context",icon="mdi:battery-heart-variant",value_fn=lambda d:d.get("recovery_context")),
     HealthLinkSensorDescription(key="recovery_confidence",translation_key="recovery_confidence",native_unit_of_measurement=PERCENTAGE,icon="mdi:shield-check-outline",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("recovery_confidence")),
     HealthLinkSensorDescription(key="hrv_vs_baseline",translation_key="hrv_vs_baseline",native_unit_of_measurement=PERCENTAGE,icon="mdi:heart-pulse",state_class=SensorStateClass.MEASUREMENT,value_fn=lambda d:d.get("hrv_vs_baseline")),
@@ -80,9 +88,22 @@ class HealthLinkSensor(_Base,SensorEntity):
         return value
     @property
     def extra_state_attributes(self):
+        d=self.coordinator.data or {}
         if self.entity_description.key=="recovery_context":
-            d=self.coordinator.data or {}
             return {"experimental_wellness_metric":True,"score":d.get("recovery_score"),"confidence":d.get("recovery_confidence"),"medical_diagnosis":False}
+        goal_map={
+            "steps_goal_progress":"steps",
+            "exercise_goal_progress":"exercise_minutes",
+            "active_energy_goal_progress":"active_energy",
+            "water_goal_progress":"water_ml",
+            "sleep_goal_progress":"sleep_minutes",
+        }
+        goal_key=goal_map.get(self.entity_description.key)
+        if goal_key:
+            item=((d.get("goal_progress") or {}).get(goal_key) or {})
+            return {"target":item.get("target"),"current":item.get("current"),"reached":item.get("reached"),"user_defined_goal":True,"medical_recommendation":False}
+        if self.entity_description.key=="steps_vs_same_time_baseline":
+            return {"comparison":"median of previous days at or before the same local clock time","personal_baseline":True,"medical_diagnosis":False}
         return None
 
 class HealthLinkRawMetricSensor(_Base,SensorEntity):

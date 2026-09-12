@@ -273,7 +273,7 @@ HealthLink가 기본적으로 사용할 수 있는 범위는 **설치된 공식 
 
 HACS에서 새 버전이 표시되면 **Update** 후 Home Assistant를 재시작합니다.
 
-현재 버전: **v0.1.5**
+현재 버전: **v0.2.0**
 
 ---
 
@@ -302,3 +302,23 @@ HealthLink 화면에 모든 등록된 프로필을 표시하고, 연결 대기·
 배포 과정에서 손상된 PNG를 승인된 원본 이미지로 교체했습니다. 도형·서체·색상·간격은 변경하지 않았습니다. 통합 카드의 로고는 **로컬 Brands Proxy API**, HealthLink 화면도 `brands/access_token` 인증을 포함한 같은 API를 우선 사용합니다. 화면의 로컬 이미지 대체 경로도 포함됩니다. PNG 청크 CRC와 압축 데이터 검사로 잘린 이미지가 다시 배포되지 않게 합니다.
 
 업데이트는 **HACS → HealthLink → v0.1.5 설치 → Home Assistant 재시작** 순서입니다. 기존 건강 프로필과 데이터베이스는 삭제하지 않습니다.
+
+
+## v0.2.0 — Apple 건강을 "보는 센서"에서 "활용하는 컨텍스트"로
+
+HealthLink는 공식 Home Assistant iOS의 **Apple 건강 센서(Labs)**가 HealthKit에서 읽어 HA에 전달한 값을 사용합니다. HealthLink가 iPhone HealthKit을 별도 경로로 직접 읽는 것은 아닙니다. 대신 다음 차이를 만듭니다.
+
+- 기존 Mobile App 원본 센서는 그대로 두고, 새 설치에서는 중복 원본 HealthLink 엔티티를 기본 비활성화합니다.
+- 사용자 개인 기준선, 같은 시간대 활동 비교, 목표 진행률, 오늘의 생활 포커스 같은 **HealthLink 전용 파생 센서**를 제공합니다.
+- `get_daily_report`, `get_trends`, `set_goal`, `evaluate_routine`, `record_routine`, `get_routine_history`, `analyze_environment` 액션을 제공합니다.
+- `sync_request`는 iPhone을 강제로 깨우는 기능으로 오해하지 않도록, 이미 HA에 전달된 최신 Apple 건강 엔티티를 즉시 다시 읽습니다.
+- `backfill_request`는 공식 Apple 건강 센서가 HA Recorder에 남긴 과거 상태를 HealthLink의 개인 로컬 저장소로 가져와 분석 시작 시점을 앞당깁니다. Recorder에 기록이 없으면 가져올 수 없습니다.
+- 목표값은 사용자가 직접 설정하며 HealthLink가 의료 권장량을 임의로 정하지 않습니다.
+- HealthLink의 자동화 기능은 **판단/컨텍스트를 반환**하고, 실제 조명·HVAC·환기 등은 사용자가 만든 HA 자동화가 실행합니다. 자동 의료 판단이나 처방은 하지 않습니다.
+
+예를 들어 저녁 자동화에서 `health_link.evaluate_routine`의 `evening_recovery` 결과가 `suggested: true`일 때만 사용자가 선택한 휴식 장면을 실행하고, 이후 `health_link.record_routine`으로 실행 여부를 기록할 수 있습니다.
+
+
+### 시간 기반 건강↔집 분석의 정확성
+
+현재 공식 Apple 건강 센서(Labs)는 HA 센서 값은 제공하지만 HealthLink가 필요한 **원본 HealthKit 샘플 시각/수면 episode 구간을 모든 항목에 전달하지는 않습니다.** 따라서 v0.2.0은 HA에 보고된 시각을 실제 측정 시각으로 가장하지 않습니다. 원본 시각이 없는 Labs 항목은 시간 정렬형 건강↔집 상관분석과 자동 환경 최적값 계산을 차단합니다. 대신 당일 누적 목표, 같은 시각대 활동 비교, 개인 보고값 기준선, HA 환경 구간 요약처럼 현재 입력만으로 의미가 분명한 기능을 제공합니다.

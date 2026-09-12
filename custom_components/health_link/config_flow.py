@@ -35,6 +35,16 @@ from .const import (
     CONF_COMPANION_DEVICE_IDS,
     CONF_ENABLE_COMPOSER,
     CONF_ENABLE_CONTEXT,
+    CONF_GOAL_STEPS,
+    CONF_GOAL_EXERCISE_MINUTES,
+    CONF_GOAL_ACTIVE_ENERGY,
+    CONF_GOAL_WATER_ML,
+    CONF_GOAL_SLEEP_MINUTES,
+    DEFAULT_GOAL_STEPS,
+    DEFAULT_GOAL_EXERCISE_MINUTES,
+    DEFAULT_GOAL_ACTIVE_ENERGY,
+    DEFAULT_GOAL_WATER_ML,
+    DEFAULT_GOAL_SLEEP_MINUTES,
     CONF_ENABLE_SENSITIVE,
     CONF_PROFILE_ID,
     CONF_PROFILE_NAME,
@@ -212,7 +222,7 @@ class HealthLinkOptionsFlow(OptionsFlowWithReload):
                 self._options.update(user_input)
                 self._options[CONF_COMPANION_DEVICE_IDS] = selected
                 self._options.pop(CONF_COMPANION_DEVICE_ID, None)
-                return await self.async_step_privacy()
+                return await self.async_step_goals()
 
         fields: dict[Any, Any] = {
             vol.Optional(
@@ -252,6 +262,26 @@ class HealthLinkOptionsFlow(OptionsFlowWithReload):
             data_schema=vol.Schema(fields),
             errors=errors,
         )
+
+    async def async_step_goals(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Optional user-defined wellness goals; zero means disabled."""
+        if user_input is not None:
+            self._options.update(user_input)
+            return await self.async_step_privacy()
+        def goal_field(key: str, default: float, maximum: float):
+            return vol.Optional(key, default=self._options.get(key, default)), vol.All(vol.Coerce(float), vol.Range(min=0, max=maximum))
+        fields = {}
+        for key, default, maximum in (
+            (CONF_GOAL_STEPS, DEFAULT_GOAL_STEPS, 100000),
+            (CONF_GOAL_EXERCISE_MINUTES, DEFAULT_GOAL_EXERCISE_MINUTES, 1440),
+            (CONF_GOAL_ACTIVE_ENERGY, DEFAULT_GOAL_ACTIVE_ENERGY, 10000),
+            (CONF_GOAL_WATER_ML, DEFAULT_GOAL_WATER_ML, 20000),
+            (CONF_GOAL_SLEEP_MINUTES, DEFAULT_GOAL_SLEEP_MINUTES, 1440),
+        ):
+            field, validator = goal_field(key, default, maximum); fields[field] = validator
+        return self.async_show_form(step_id="goals", data_schema=vol.Schema(fields))
 
     async def async_step_privacy(
         self, user_input: dict[str, Any] | None = None

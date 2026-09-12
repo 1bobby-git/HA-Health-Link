@@ -2,6 +2,25 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.2.0] - 2026-09-12
+
+### Added
+- HealthLink-specific daily context sensors: user goal progress, same-time personal activity comparison, daily goal context and daily wellness focus.
+- Optional personal goals in the standard Options Flow; zero disables a goal and no medical/population target is assumed.
+- Response-capable Home Assistant actions for daily reports, trends, goal management, routine evaluation/history and environment-window analysis.
+- Recorder-history bootstrap for official iOS Apple Health Sensors (Labs), allowing HealthLink to reuse retained HA history without a separate iOS app.
+- Goal/context events for automation use.
+- Explicit Companion time semantics metadata; time-aligned Health↔Home correlation is blocked when Labs provides only the value/report time, preventing misleading associations.
+
+### Changed
+- Duplicate raw Apple Health summary entities are disabled by default for new entity-registry entries; existing enabled entities remain intact.
+- `sync_request` now refreshes from current HA Apple Health entity states instead of pretending to force iOS/HealthKit.
+- `backfill_request` imports Companion Apple Health history from HA Recorder when the Companion source is active.
+- Documentation now explicitly distinguishes the Mobile App HealthKit transport from HealthLink's analysis/automation layer.
+
+### Safety
+- Derived outputs remain wellness/context information only, with confidence/data-staleness guards and no medical diagnosis or medication automation.
+
 ## [0.1.5] - 2026-09-12
 
 ### Fixed

@@ -48,6 +48,17 @@
           "raw_retention_days": "Raw data retention (days)",
           "enable_sensitive": "Allow sensitive health metrics as HA entities"
         }
+      },
+      "goals": {
+        "title": "Personal wellness goals",
+        "description": "Set only the goals you want. Zero disables a goal. HealthLink does not choose medical or population targets for you.",
+        "data": {
+          "goal_steps": "Steps goal",
+          "goal_exercise_minutes": "Exercise goal (minutes)",
+          "goal_active_energy": "Active energy goal (kcal)",
+          "goal_water_ml": "Recorded water goal (mL)",
+          "goal_sleep_minutes": "Sleep goal (minutes)"
+        }
       }
     },
     "error": {
@@ -105,6 +116,30 @@
       },
       "activity_vs_baseline": {
         "name": "Activity vs personal baseline"
+      },
+      "steps_goal_progress": {
+        "name": "Steps goal progress"
+      },
+      "exercise_goal_progress": {
+        "name": "Exercise goal progress"
+      },
+      "active_energy_goal_progress": {
+        "name": "Active energy goal progress"
+      },
+      "water_goal_progress": {
+        "name": "Recorded water goal progress"
+      },
+      "sleep_goal_progress": {
+        "name": "Sleep goal progress"
+      },
+      "steps_vs_same_time_baseline": {
+        "name": "Steps vs same-time baseline"
+      },
+      "daily_goal_context": {
+        "name": "Daily goal context"
+      },
+      "daily_focus": {
+        "name": "Daily wellness focus"
       }
     },
     "binary_sensor": {
@@ -113,6 +148,9 @@
       },
       "recovery_below_baseline": {
         "name": "Recovery below baseline"
+      },
+      "configured_goals_reached": {
+        "name": "Configured daily goals reached"
       }
     }
   }

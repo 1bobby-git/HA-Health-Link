@@ -20,6 +20,7 @@ class Desc(BinarySensorEntityDescription):
 
 DESCRIPTIONS=(
     Desc(key="data_stale",translation_key="data_stale",icon="mdi:database-clock-outline",entity_category=EntityCategory.DIAGNOSTIC,value_fn=lambda d:bool(d.get("data_stale",True))),
+    Desc(key="configured_goals_reached",translation_key="configured_goals_reached",icon="mdi:target",value_fn=lambda d:d.get("daily_goal_context")=="all_reached"),
     Desc(key="recovery_below_baseline",translation_key="recovery_below_baseline",icon="mdi:battery-heart-variant",value_fn=lambda d:bool(d.get("recovery_below_baseline",False))),
 )
 
