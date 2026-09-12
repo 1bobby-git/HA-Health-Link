@@ -11,7 +11,7 @@ import csv
 import io
 from pathlib import Path, PurePosixPath
 import re
-from typing import BinaryIO, Iterator
+from typing import BinaryIO, Iterable, Iterator
 import zipfile
 
 from .health_import import (
@@ -102,6 +102,34 @@ def _safe_member(member: zipfile.ZipInfo) -> PurePosixPath:
     return name
 
 
+def _eligible_ecg_members(members: Iterable[zipfile.ZipInfo]) -> list[zipfile.ZipInfo]:
+    """Validate the container but budget only ECG files in ECG-only mode."""
+    members = list(members)
+    if len(members) > 10000:
+        raise HealthImportError("archive_too_large")
+
+    eligible: list[zipfile.ZipInfo] = []
+    for member in members:
+        name = _safe_member(member)
+        if (
+            not member.is_dir()
+            and name.suffix.lower() == ".csv"
+            and "electrocardiograms" in {part.lower() for part in name.parts}
+        ):
+            eligible.append(member)
+
+    if not eligible:
+        raise HealthImportError("no_ecg_in_archive")
+    if len(eligible) > MAX_ECG_FILES:
+        raise HealthImportError("too_many_ecg_files")
+    if sum(member.file_size for member in eligible) > MAX_ECG_ARCHIVE_BYTES:
+        raise HealthImportError("ecg_archive_too_large")
+    for member in eligible:
+        if member.file_size > max(1024 * 1024, member.compress_size * 2000):
+            raise HealthImportError("archive_too_large")
+    return eligible
+
+
 def read_ecg_only(path: Path) -> Iterator[dict]:
     """Read only ECG payloads without expanding/scanning huge health XML files."""
     if path.stat().st_size > MAX_FILE_BYTES:
@@ -110,30 +138,7 @@ def read_ecg_only(path: Path) -> Iterator[dict]:
     suffix = path.suffix.lower()
     if suffix == ".zip":
         with zipfile.ZipFile(path) as archive:
-            members = archive.infolist()
-            if len(members) > 10000:
-                raise HealthImportError("archive_too_large")
-
-            eligible: list[tuple[zipfile.ZipInfo, PurePosixPath]] = []
-            for member in members:
-                name = _safe_member(member)
-                if (
-                    not member.is_dir()
-                    and name.suffix.lower() == ".csv"
-                    and "electrocardiograms" in {part.lower() for part in name.parts}
-                ):
-                    eligible.append((member, name))
-
-            if not eligible:
-                raise HealthImportError("no_ecg_in_archive")
-            if len(eligible) > MAX_ECG_FILES:
-                raise HealthImportError("too_many_ecg_files")
-            if sum(member.file_size for member, _ in eligible) > MAX_ECG_ARCHIVE_BYTES:
-                raise HealthImportError("ecg_archive_too_large")
-
-            for member, _ in eligible:
-                if member.file_size > max(1024 * 1024, member.compress_size * 2000):
-                    raise HealthImportError("archive_too_large")
+            for member in _eligible_ecg_members(archive.infolist()):
                 with archive.open(member) as stream:
                     yield from ecg_csv_localized(stream)
         return
