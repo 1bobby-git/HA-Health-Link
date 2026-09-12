@@ -2,6 +2,18 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.1.5] - 2026-09-12
+
+### Fixed
+- Discover registered iOS devices before Apple Health Labs has any health entities.
+- Show the selector even when exactly one unassigned iPhone remains.
+- Keep waiting/failed health profiles visible and refresh the profile list on return and periodically while visible.
+- Guard profile switching against stale asynchronous responses; preserve Composer forms during background status updates.
+- Respect an explicitly cleared device selection; prevent auto-binding a second profile to an existing person's phone.
+- Replace truncated brand PNG files with pixel-identical approved artwork; render Studio branding through authenticated local Brands Proxy API with a local image fallback.
+- Add profile discovery/identity, frontend race, and full PNG integrity regression tests.
+- Keep administrator-only access, per-profile storage and HA-native Options Flow unchanged.
+
 ## [0.1.4] - 2026-09-12
 
 ### Changed

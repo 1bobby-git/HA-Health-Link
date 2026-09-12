@@ -18,10 +18,11 @@ from .analytics.engine import align_previous, observed_best_range, pearson
 from .composer.engine import ComposerError, SafeFormula
 from .const import CONF_BRIDGE_SECRET, CONF_PROFILE_ID, DOMAIN
 from .models import HealthLinkRuntimeData
+from .profile_summary import profile_loaded, profile_summary
 
 _ID_RE=re.compile(r"^[a-z0-9_\-]{1,64}$")
 
-def _entries(hass:HomeAssistant)->list[Any]:return [e for e in hass.config_entries.async_entries(DOMAIN) if getattr(e,"runtime_data",None)]
+def _entries(hass:HomeAssistant)->list[Any]:return [e for e in hass.config_entries.async_entries(DOMAIN) if profile_loaded(e)]
 def _entry(hass:HomeAssistant,msg:dict[str,Any]):
     entries=_entries(hass);wanted=msg.get("config_entry_id")
     if wanted:
@@ -33,11 +34,7 @@ def _entry(hass:HomeAssistant,msg:dict[str,Any]):
 def _send_profile_error(connection,msg,err)->None:connection.send_error(msg["id"],"profile_not_found",str(err))
 
 def _entry_summary(entry)->dict[str,Any]:
-    runtime:HealthLinkRuntimeData=entry.runtime_data;data=runtime.coordinator.data or {}
-    count=runtime.companion.sensor_count if runtime.companion else 0
-    choose=runtime.companion.needs_device_selection if runtime.companion else False
-    setup="choose_iphone" if choose else "enable_health_sensors" if runtime.companion is not None and count==0 else "ready" if count>0 else "bridge_only"
-    return {"config_entry_id":entry.entry_id,"title":entry.title,"profile_id":runtime.store.profile_id,"sample_count":data.get("sample_count",0),"type_count":data.get("type_count",0),"source_count":data.get("source_count",0),"last_sync":data.get("last_sync"),"data_stale":data.get("data_stale",True),"data_confidence":data.get("data_confidence",0),"steps_today":data.get("steps_today"),"sleep_duration":data.get("sleep_duration"),"sleep_deep":data.get("sleep_deep"),"sleep_rem":data.get("sleep_rem"),"sleep_efficiency":data.get("sleep_efficiency"),"recovery_context":data.get("recovery_context"),"recovery_score":data.get("recovery_score"),"recovery_confidence":data.get("recovery_confidence"),"source_mode":entry.options.get("source_mode","auto"),"companion_active":runtime.companion is not None,"companion_device_id":runtime.companion.bound_device_id if runtime.companion else None,"companion_needs_selection":choose,"companion_sensor_count":count,"setup_state":setup,"bridge_ready":bool(runtime.webhook_id)}
+    return profile_summary(entry)
 
 @callback
 def async_register_websocket_api(hass:HomeAssistant)->None:
@@ -46,7 +43,7 @@ def async_register_websocket_api(hass:HomeAssistant)->None:
 @websocket_api.websocket_command({vol.Required("type"):"health_link/status"})
 @websocket_api.require_admin
 @websocket_api.async_response
-async def ws_status(hass,connection,msg):connection.send_result(msg["id"],[_entry_summary(e) for e in _entries(hass)])
+async def ws_status(hass,connection,msg):connection.send_result(msg["id"],[_entry_summary(e) for e in hass.config_entries.async_entries(DOMAIN)])
 
 @websocket_api.websocket_command({vol.Required("type"):"health_link/catalog/list",vol.Optional("config_entry_id"):str})
 @websocket_api.require_admin
