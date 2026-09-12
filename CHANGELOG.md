@@ -2,6 +2,20 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.3.2] - 2026-09-12
+
+### Fixed
+- Make **ECG only** the default Health export import scope so an ECG import does not accidentally parse the potentially huge `export.xml` health history first.
+- Keep long-running native Options Flow imports registered in Home Assistant so a browser/WebSocket disconnect does not orphan the job; reopening **건강 원본·ECG 가져오기** reconnects to the same running or completed task.
+- Batch temporary SQLite staging writes in groups of 1,000 and disable durability journaling only for the disposable staging database, reducing CPU/disk overhead while preserving the single atomic live-store commit.
+
+### UX
+- Put `ECG만 · 빠름/권장` first in the import selector and clearly label the full Health export path as a large/slow operation.
+- Preserve the existing full-health import path for users who deliberately want `export.xml` history.
+
+### Diagnostics
+- Import results now retain the selected scope, elapsed seconds, scanned record count and ECG point count without exposing health values.
+
 ## [0.3.1] - 2026-09-12
 
 ### UX
