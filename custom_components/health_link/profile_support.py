@@ -1,4 +1,4 @@
-"""Profile identity and iOS discovery without requiring health samples first."""
+"""Profile identity and Apple mobile-device discovery."""
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -36,7 +36,7 @@ def entry_device_ids(entry: Any) -> set[str]:
 
 
 def devices_in_use(hass, device_ids: Iterable[str], *, exclude_entry_id=None) -> set[str]:
-    """Keep a phone assigned to only one personal profile, even while unloaded."""
+    """Keep an Apple mobile device assigned to only one personal profile."""
     requested = set(device_ids)
     used: set[str] = set()
     for entry in hass.config_entries.async_entries(DOMAIN):
@@ -46,7 +46,12 @@ def devices_in_use(hass, device_ids: Iterable[str], *, exclude_entry_id=None) ->
 
 
 def discover_ios_devices(hass) -> dict[str, str]:
-    """List registered iOS phones before Apple Health Labs is enabled.
+    """List Companion-registered iOS/iPadOS devices before Labs is enabled.
+
+    The selector represents Apple mobile devices registered to this Home Assistant
+    through the official Companion app, not Home Assistant user accounts. Apple
+    Watch is not selected directly; its HealthKit records can be present in the
+    Apple Health data read by the selected iPhone or iPad.
 
     Registration OS/model is evidence of eligibility, not of health permission.
     Do not enumerate arbitrary HA users or infer ownership from a device name.
@@ -79,7 +84,7 @@ def discover_ios_devices(hass) -> dict[str, str]:
                 break
         if eligible:
             result[device.id] = device.name_by_user or device.name or device.id
-    # Duplicate phone names must remain distinguishable in the selector.
+    # Duplicate device names must remain distinguishable in the selector.
     names = list(result.values())
     return {
         device_id: f"{name} ({device_id[:6]})" if names.count(name) > 1 else name

@@ -29,9 +29,10 @@ def test_multiple_phones_stay_reserved_per_person():
     assert devices_in_use(hass, ["phone-b", "phone-c", "phone-d"], exclude_entry_id="a") == {"phone-c"}
 
 
-def test_registered_iphone_is_discoverable_without_health_entities(monkeypatch):
+def test_registered_iphone_and_ipad_are_discoverable_without_health_entities(monkeypatch):
     registrations = [
         entry("ios", data={"os_name": "iOS", "model": "iPhone17,3", "manufacturer": "Apple"}),
+        entry("ipad", data={"os_name": "iPadOS", "model": "iPad16,3", "manufacturer": "Apple"}),
         entry("android", data={"os_name": "Android", "manufacturer": "Google"}),
         entry("mac", data={"os_name": "macOS", "manufacturer": "Apple"}),
     ]
@@ -39,6 +40,7 @@ def test_registered_iphone_is_discoverable_without_health_entities(monkeypatch):
                       model=model, name=name, name_by_user=None)
                for key, manufacturer, model, name in [
                    ("ios", "Apple", "iPhone17,3", "가족 iPhone"),
+                   ("ipad", "Apple", "iPad16,3", "가족 iPad"),
                    ("android", "Google", "Pixel", "Android"),
                    ("mac", "Apple", "MacBook", "Mac"),
                ]}
@@ -46,7 +48,7 @@ def test_registered_iphone_is_discoverable_without_health_entities(monkeypatch):
     monkeypatch.setattr(profile_support.dr, "async_get", lambda hass: NS(devices=devices))
     monkeypatch.setattr(profile_support.er, "async_get", lambda hass: NS(entities={}))
     hass = NS(config_entries=NS(async_entries=lambda domain: registrations if domain == "mobile_app" else []))
-    assert discover_ios_devices(hass) == {"ios": "가족 iPhone"}
+    assert discover_ios_devices(hass) == {"ios": "가족 iPhone", "ipad": "가족 iPad"}
 
 
 def test_exactly_one_remaining_iphone_is_shown(monkeypatch):
