@@ -81,7 +81,7 @@ async def _async_setup_frontend(hass: HomeAssistant) -> None:
         webcomponent_name="health-link-panel",
         sidebar_title="HealthLink",
         sidebar_icon="mdi:heart-pulse",
-        module_url=f"{_STATIC_URL}/health-link-panel-modern.js?v={VERSION}",
+        module_url=f"{_STATIC_URL}/health-link-panel-modern.js?v={VERSION}&ui=20260913.1",
         require_admin=True,
         handle_safe_area=True,
     )
