@@ -2,7 +2,7 @@
  * No external runtime dependencies. Existing administrator WebSocket APIs only.
  */
 import { TABS, STYLES, esc, numeric, headerView, bodyView, editorView, errorView, resultView } from './health-link-studio-view.js?v=20260913.1';
-import { STUDIO_BRAND, STUDIO_BRANDING_STYLES, bindStudioLogo } from './health-link-studio-branding.js?v=20260913.2';
+import { STUDIO_BRAND, STUDIO_BRANDING_STYLES, bindStudioLogo } from './health-link-studio-branding.js?v=20260914.1';
 
 class HealthLinkPanel extends HTMLElement {
   constructor() {
