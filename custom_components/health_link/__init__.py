@@ -64,7 +64,16 @@ async def _async_setup_frontend(hass: HomeAssistant) -> None:
     if not domain_data.get(_DATA_STATIC_READY):
         static_dir = Path(__file__).parent / "frontend"
         await hass.http.async_register_static_paths(
-            [StaticPathConfig(_STATIC_URL, str(static_dir), cache_headers=True)]
+            [
+                StaticPathConfig(_STATIC_URL, str(static_dir), cache_headers=True),
+                # Serve the canonical integration artwork, not a GitHub URL or
+                # a copied asset that can drift away from brand/logo.png.
+                StaticPathConfig(
+                    "/health_link_brand/logo.png",
+                    str(Path(__file__).parent / "brand" / "logo.png"),
+                    cache_headers=True,
+                ),
+            ]
         )
         domain_data[_DATA_STATIC_READY] = True
     if domain_data.get(_DATA_PANEL_READY):
@@ -81,7 +90,7 @@ async def _async_setup_frontend(hass: HomeAssistant) -> None:
         webcomponent_name="health-link-panel",
         sidebar_title="HealthLink",
         sidebar_icon="mdi:heart-pulse",
-        module_url=f"{_STATIC_URL}/health-link-panel-modern.js?v={VERSION}&ui=20260913.1",
+        module_url=f"{_STATIC_URL}/health-link-panel-modern.js?v={VERSION}&ui=20260913.2",
         require_admin=True,
         handle_safe_area=True,
     )

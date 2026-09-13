@@ -2,6 +2,7 @@
  * No external runtime dependencies. Existing administrator WebSocket APIs only.
  */
 import { TABS, STYLES, esc, numeric, headerView, bodyView, editorView, errorView, resultView } from './health-link-studio-view.js?v=20260913.1';
+import { STUDIO_BRAND, STUDIO_BRANDING_STYLES, bindStudioLogo } from './health-link-studio-branding.js?v=20260913.2';
 
 class HealthLinkPanel extends HTMLElement {
   constructor() {
@@ -13,7 +14,8 @@ class HealthLinkPanel extends HTMLElement {
     this._fields = {}; this._results = {}; this._mutations = new Map(); this._notice = '';
     this._requestId = 0; this._queryGeneration = 0; this._editor = null;
     this._active = false; this._refreshingProfiles = false; this._logoFailed = false;
-    this._logoUrl = new URL('./brand/logo.png', import.meta.url).href;
+    // Canonical custom_components/health_link/brand/logo.png, served by HA.
+    this._logoUrl = STUDIO_BRAND.logoUrl;
     this._onFocus = () => { if (document.visibilityState !== 'hidden') this._refreshProfiles(); };
     this._beforeUnload = event => {
       if (this._editor?.dirty || this._editor?.busy) { event.preventDefault(); event.returnValue = ''; }
@@ -73,7 +75,7 @@ class HealthLinkPanel extends HTMLElement {
     this._closeEditor(true, false);
   }
   _mount() {
-    this.shadowRoot.innerHTML = `<style>${STYLES}</style><div class="hc-root"><div id="headerHost"></div><main class="hc-wrap hc-main"><div id="statusHost"></div>${TABS.map(([id]) => `<section id="panel-${id}" role="tabpanel" aria-labelledby="tab-${id}" tabindex="-1" hidden></section>`).join('')}<footer class="hc-footer"><span>HealthLink Studio</span><span id="checkTime"></span></footer></main><dialog id="editor" class="hc-dialog" aria-labelledby="editorTitle" aria-modal="true"></dialog><div id="live" class="hc-sr-only" role="status" aria-live="polite"></div></div>`;
+    this.shadowRoot.innerHTML = `<style>${STYLES}${STUDIO_BRANDING_STYLES}</style><div class="hc-root"><div id="headerHost"></div><main class="hc-wrap hc-main"><div id="statusHost"></div>${TABS.map(([id]) => `<section id="panel-${id}" role="tabpanel" aria-labelledby="tab-${id}" tabindex="-1" hidden></section>`).join('')}<footer class="hc-footer"><span>HealthLink Studio</span><span id="checkTime"></span></footer></main><dialog id="editor" class="hc-dialog" aria-labelledby="editorTitle" aria-modal="true"></dialog><div id="live" class="hc-sr-only" role="status" aria-live="polite"></div></div>`;
     this.shadowRoot.addEventListener('click', e => this._click(e));
     this.shadowRoot.addEventListener('keydown', e => this._keydown(e));
     this.shadowRoot.addEventListener('input', e => this._input(e));
@@ -104,13 +106,7 @@ class HealthLinkPanel extends HTMLElement {
     this.shadowRoot.getElementById('headerHost').innerHTML = headerView(this);
     const settings = this.shadowRoot.querySelector('.hl-settings');
     settings?.setAttribute('aria-label', this._t('HealthLink 설정','HealthLink settings'));
-    const image = this.shadowRoot.getElementById('healthLinkLogo');
-    const fallback = () => { this._logoFailed = true; image.hidden = true; this.shadowRoot.getElementById('logoFallback').hidden = false; };
-    image.addEventListener('error', fallback, {once:true});
-    image.addEventListener('load', () => {
-      image.width = image.naturalWidth; image.height = image.naturalHeight;
-    }, {once:true});
-    if (this._logoFailed) fallback();
+    bindStudioLogo(this);
     for (const [id] of TABS) {
       const panel = this.shadowRoot.getElementById(`panel-${id}`); panel.hidden = id !== this._tab;
       if (id !== this._tab) panel.replaceChildren();

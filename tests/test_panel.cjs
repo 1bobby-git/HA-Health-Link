@@ -87,3 +87,6 @@ test('Studio keeps native settings routes and no production preview fixtures',()
   assert.match(modernSource,/hass-toggle-menu/);
   assert.match(modernSource,/brand\/logo\.png/);
 });
+
+// HealthLink-specific logo and light-summary regression coverage.
+require("./test_studio_branding.cjs");
