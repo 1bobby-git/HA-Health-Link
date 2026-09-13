@@ -66,19 +66,27 @@ test('token failure uses bundled public artwork rather than an external app',asy
   p.disconnectedCallback();assert.equal(p._active,false);assert.equal(p._refreshTimer,null);
 });
 
-test('modern Studio keeps small radii and clearer information hierarchy',()=>{
-  assert.match(modernSource,/--hl-radius-lg:12px/);
-  assert.match(modernSource,/--hl-radius-md:10px/);
-  assert.match(modernSource,/--hl-radius-sm:8px/);
-  assert.match(modernSource,/오늘 요약/);
-  assert.match(modernSource,/분석 준비도/);
-  assert.match(modernSource,/최근 인사이트/);
-  assert.match(modernSource,/빠른 작업/);
-  assert.match(modernSource,/ECG·건강 원본 가져오기/);
+// The old 12/10/8px visual contract was superseded by the attached Wallet guide.
+// Runtime behavior of the new entry module is tested in frontend/studio_browser_checks.py.
+const viewPath = path.join(__dirname, '../custom_components/health_link/frontend/health-link-studio-view.js');
+const viewSource = fs.readFileSync(viewPath, 'utf8');
+test('Studio uses the approved Wallet design tokens and four functional areas',()=>{
+  assert.match(viewSource,/--hc-radius-hero:24px/);
+  assert.match(viewSource,/--hc-radius-card:19px/);
+  assert.match(viewSource,/--hc-radius-button:12px/);
+  assert.match(viewSource,/--hc-primary-bg:#2563eb/);
+  for (const area of ['한눈에','건강 데이터','기록·분석','연결']) assert.ok(viewSource.includes(area));
+  assert.doesNotMatch(viewSource,/큰 변화는 보이지/);
+  assert.match(modernSource,/health-link-studio-view\.js\?v=20260913\.1/);
+  require('node:child_process').execFileSync(process.execPath,['--check',viewPath]);
+});
+test('Studio keeps native settings routes and no production preview fixtures',()=>{
+  assert.ok(viewSource.includes('/config/integrations/integration/health_link'));
+  assert.ok(viewSource.includes('/config/integrations/dashboard/add?domain=health_link'));
+  assert.doesNotMatch(modernSource+viewSource,/config_panel_domain|hassFixture|window\.mock/);
+  assert.match(modernSource,/hass-toggle-menu/);
+  assert.match(modernSource,/brand\/logo\.png/);
 });
 
-test('modern Studio keeps settings separate and uses native integration routes',()=>{
-  assert.match(modernSource,/\/config\/integrations\/integration\/health_link/);
-  assert.match(modernSource,/\/config\/integrations\/dashboard\/add\?domain=health_link/);
-  assert.doesNotMatch(modernSource,/config_panel_domain/);
-});
+// HealthLink-specific logo and light-summary regression coverage.
+require("./test_studio_branding.cjs");
