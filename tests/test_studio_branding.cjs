@@ -21,7 +21,7 @@ test('header artwork is byte-identical to the requested canonical GitHub logo',(
 test('canonical local asset route and UI cache revisions are wired to production',()=>{
   assert.match(setup,/"\/health_link_brand\/logo\.png"/);
   assert.match(setup,/Path\(__file__\)\.parent \/ "brand" \/ "logo\.png"/);
-  assert.match(setup,/ui=20260914\.1/);
+  assert.match(setup,/ui=20260914\.3/);
   assert.match(controller,/health-link-studio-branding\.js\?v=20260914\.1/);
   assert.match(controller,/bindStudioLogo\(this\)/);
   assert.match(controller,/\$\{STYLES\}\$\{STUDIO_BRANDING_STYLES\}/);

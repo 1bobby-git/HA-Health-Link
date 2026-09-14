@@ -66,7 +66,7 @@ class StudioUI(unittest.TestCase):
 
     def test_module_graph_and_no_external_runtime(self):
         self.assertTrue(any('health-link-panel-modern.js' in x for x in self.requests))
-        self.assertTrue(any('health-link-studio-view.js?v=20260913.1' in x for x in self.requests))
+        self.assertTrue(any('health-link-studio-view.js?v=20260914.3' in x for x in self.requests))
         self.assertFalse(any('pairing' in x['type'] or 'token' in x['type'] for x in self.page.evaluate('mock.calls')))
         self.assertEqual(self.page.locator('.hc-hero').count(), 1)
         self.assertNotIn('큰 변화는', self.page.locator('.hc-root').inner_text())
@@ -279,7 +279,7 @@ class StudioUI(unittest.TestCase):
         self.assertEqual(before,len(self.page.evaluate('mock.calls')))
 
     def test_untrusted_names_are_text_not_html(self):
-        self.page.evaluate('mock.catalog[0].display_name="<img src=x onerror=alert(1)>";panel._load()')
+        self.page.evaluate('mock.catalog[0].type_id="unknown_vendor_metric";mock.catalog[0].display_name="<img src=x onerror=alert(1)>";panel._load()')
         self.page.wait_for_function('!panel._loading');self.nav('explorer')
         self.assertIn('<img src=x',self.page.locator('#catalogList').inner_text())
         self.assertEqual(self.page.locator('#catalogList img').count(),0)
