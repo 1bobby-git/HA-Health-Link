@@ -90,7 +90,8 @@ async def _async_setup_frontend(hass: HomeAssistant) -> None:
         webcomponent_name="health-link-panel",
         sidebar_title="HealthLink",
         sidebar_icon="mdi:heart-pulse",
-        module_url=f"{_STATIC_URL}/health-link-panel-modern.js?v={VERSION}&ui=20260914.1",
+        module_url=f"{_STATIC_URL}/health-link-panel-modern.js?v={VERSION}&ui=20260914.3",
+        config={"version": VERSION},
         require_admin=True,
         # Studio reserves HA safe-area insets outside its scrolling root.
         handle_safe_area=True,

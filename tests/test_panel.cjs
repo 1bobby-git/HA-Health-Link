@@ -70,14 +70,14 @@ test('token failure uses bundled public artwork rather than an external app',asy
 // Runtime behavior of the new entry module is tested in frontend/studio_browser_checks.py.
 const viewPath = path.join(__dirname, '../custom_components/health_link/frontend/health-link-studio-view.js');
 const viewSource = fs.readFileSync(viewPath, 'utf8');
-test('Studio uses the approved Wallet design tokens and four functional areas',()=>{
+test('Studio retains base styles and layers the approved shared component tokens',()=>{
   assert.match(viewSource,/--hc-radius-hero:24px/);
   assert.match(viewSource,/--hc-radius-card:19px/);
   assert.match(viewSource,/--hc-radius-button:12px/);
   assert.match(viewSource,/--hc-primary-bg:#2563eb/);
   for (const area of ['한눈에','건강 데이터','기록·분석','연결']) assert.ok(viewSource.includes(area));
   assert.doesNotMatch(viewSource,/큰 변화는 보이지/);
-  assert.match(modernSource,/health-link-studio-view\.js\?v=20260913\.1/);
+  assert.match(modernSource,/health-link-studio-view\.js\?v=20260914\.3/);
   require('node:child_process').execFileSync(process.execPath,['--check',viewPath]);
 });
 test('Studio keeps native settings routes and no production preview fixtures',()=>{
@@ -88,5 +88,6 @@ test('Studio keeps native settings routes and no production preview fixtures',()
   assert.match(modernSource,/brand\/logo\.png/);
 });
 
-// HealthLink-specific logo and light-summary regression coverage.
+// Existing branding/safe-area contracts and the v0.3.8 shared UI contracts.
 require("./test_studio_branding.cjs");
+require("./test_studio_unified.cjs");

@@ -1,13 +1,16 @@
 /** HealthLink Studio views. API operations live in health-link-panel-modern.js.
  * Design system 1.0.0, Copyright (c) 2026 1bobby-git, MIT (repository LICENSE).
  */
+import { icon } from './health-link-studio-icons.js?v=20260914.3';
+import { metricName, metricSearchText } from './health-link-studio-labels.js?v=20260914.3';
+import { ecgHelpView } from './health-link-studio-help.js?v=20260914.3';
+
 export const TABS = [
   ['today', '한눈에', 'Overview'], ['explorer', '건강 데이터', 'Health data'],
   ['timeline', '기록·분석', 'History & insights'], ['connect', '연결', 'Connection'],
 ];
 export const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const numeric = value => value === null || value === undefined || value === '' || typeof value === 'boolean' || !Number.isFinite(Number(value)) ? null : Number(value);
-export const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${({menu:'M4 6h16M4 12h16M4 18h16',refresh:'M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 6M4 12l2 6a7 7 0 0 0 12-1',plus:'M12 5v14M5 12h14',close:'m6 6 12 12M6 18 18 6',arrow:'M5 12h14m-5-5 5 5-5 5',shield:'m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Zm-4 9 3 3 5-6',settings:'M4 7h16M4 17h16M8 4v6M16 14v6',pulse:'M2 12h5l3-7 4 14 3-7h5'})[name] || 'M5 12h14'}"/></svg>`;
 const button = (action, text, cls = '', extra = '') => `<button type="button" data-action="${action}" class="${cls}" ${extra}>${text}</button>`;
 const link = (text, href = '/config/integrations/integration/health_link', cls = 'hl-link') => `<a class="${cls}" href="${href}">${text}</a>`;
 const badge = (text, state = '') => `<span class="hc-badge" data-state="${state}">${esc(text)}</span>`;
@@ -15,7 +18,7 @@ const empty = (title, copy = '', action = '') => `<div class="hc-empty"><strong>
 const row = (label, value, detail = '') => `<li class="hc-list-row"><div><strong>${esc(label)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</div><span class="hl-value">${esc(value)}</span></li>`;
 const card = (title, body, aside = '') => `<section class="hc-card"><div class="hc-card-head"><h2>${esc(title)}</h2>${aside}</div><div class="hc-card-body">${body}</div></section>`;
 const options = (items, key, name) => items.map(x => `<option value="${esc(x[key])}">${esc(x[name] || x[key])}</option>`).join('');
-export const metricOptions = ui => options(ui._catalog.filter(x => numeric(x.sample_count) > 0), 'type_id', 'display_name');
+export const metricOptions = ui => options(ui._catalog.filter(x => numeric(x.sample_count) > 0).map(x => ({...x,display_name:metricName(ui,x)})), 'type_id', 'display_name');
 export function entityOptions(ui) {
   const entries = Object.entries(ui._hass?.states || {}).filter(([, s]) => numeric(s.state) !== null);
   return (entries.length > 2500 ? `<option disabled>${ui._t(`전체 ${entries.length}개 중 2,500개 표시`,`Showing 2,500 of ${entries.length} numeric sensors`)}</option>` : '') + entries.slice(0, 2500).map(([id, s]) => `<option value="${esc(id)}">${esc(s.attributes?.friendly_name || id)} · ${esc(id)}</option>`).join('');
@@ -32,19 +35,23 @@ export function errorView(ui, error, title) {
   return `<div class="hc-alert" role="alert"><strong>${esc(title || t('작업을 완료하지 못했어요.','The operation could not be completed.'))}</strong><p>${esc(messages[error?.code] || t('입력과 연결 상태를 확인한 뒤 다시 시도해 주세요.','Check your input and connection, then retry.'))}</p><details><summary>${t('오류 상세','Error details')}</summary><p>${esc([error?.code, error?.message || String(error)].filter(Boolean).join(' · '))}</p></details></div>`;
 }
 export function headerView(ui) {
-  const t = ui._t.bind(ui), p = ui._profile();
-  const picker = ui._profiles.length > 1 ? `<div class="hc-entry"><label class="hc-sr-only" for="profile">${t('건강 프로필 선택','Select health profile')}</label><select id="profile">${ui._profiles.map(x => `<option value="${esc(x.config_entry_id)}" ${x.config_entry_id === ui._entryId ? 'selected' : ''}>${esc(x.title)}${x.available === false ? t(' · 확인 필요',' · attention needed') : ''}</option>`).join('')}</select></div>` : '';
+  const t = ui._t.bind(ui);
+  const disconnected = ui._hass?.connected === false || ui._hass?.connection?.connected === false;
+  const connected = ui._hass?.connected === true || ui._hass?.connection?.connected === true;
+  const state = disconnected || ui._errors.status ? 'error' : connected ? 'online' : '';
+  const status = disconnected ? t('HA 연결 끊김','HA offline') : ui._errors.status ? t('상태 확인 실패','Status check failed') : connected ? t('HA 연결됨','HA connected') : t('연결 확인 중','Checking connection');
+  const version = ui._panel?.config?.version;
+  const picker = ui._profiles.length > 1 ? `<div class="hl-profile-row"><div class="hc-entry"><label for="profile">${t('건강 프로필','Health profile')}</label><select id="profile">${ui._profiles.map(x => `<option value="${esc(x.config_entry_id)}" ${x.config_entry_id === ui._entryId ? 'selected' : ''}>${esc(x.title)}${x.available === false ? t(' · 확인 필요',' · attention needed') : ''}</option>`).join('')}</select></div></div>` : '';
   return `<header class="hc-header"><div class="hc-wrap"><div class="hc-header-row">
-    ${button('menu', icon('menu'), 'hc-icon-button hc-ghost', `aria-label="${t('Home Assistant 메뉴 열기','Open Home Assistant menu')}"`)}
-    ${button('overview', `<img id="healthLinkLogo" src="${esc(ui._logoUrl)}" alt="HealthLink"><span id="logoFallback" hidden>HealthLink</span>`, 'hc-brand', `aria-label="${t('HealthLink 한눈에','HealthLink overview')}" data-logo-surface="light"`)}
-    <span class="hc-brand-caption">HealthLink Studio</span>
-    <div class="hc-header-tools"><span class="hc-connection" data-state="${ui._errors.status ? 'error' : ''}">${ui._errors.status ? t('상태 확인 실패','Status check failed') : ui._loading ? t('확인 중','Checking') : p ? esc(p.title) : t('프로필 미설정','No profile')}</span>${picker}
-    ${button('refresh', icon('refresh'), 'hc-icon-button hc-ghost', `id="refreshProfiles" aria-label="${t('상태 새로고침','Refresh status')}" ${ui._loading ? 'disabled aria-busy="true"' : ''}`)}
-    ${link(icon('settings'), '/config/integrations/integration/health_link', 'hl-settings')}</div></div>
+    ${button('overview', `<img id="healthLinkLogo" src="${esc(ui._logoUrl)}" width="600" height="200" alt="HealthLink"><span id="logoFallback" hidden>HealthLink</span>`, 'hc-brand', `aria-label="${t('HealthLink 한눈에','HealthLink overview')}" data-logo-surface="light"`)}
+    <div class="hc-header-tools"><span class="hc-connection" data-state="${state}">${status}</span>
+    ${version ? `<span class="hl-version">v${esc(version)}</span>` : ''}
+    ${button('refresh', icon('refresh'), 'hc-icon-button hc-ghost', `id="refreshProfiles" aria-label="${t('상태 새로고침','Refresh status')}" title="${t('상태 새로고침','Refresh status')}" ${ui._loading ? 'disabled aria-busy="true"' : ''}`)}
+    ${link(icon('settings'), '/config/integrations/integration/health_link', 'hl-settings')}</div></div>${picker}
     <nav class="hc-tabs" role="tablist" aria-label="HealthLink Studio">${TABS.map(([id, ko, en]) => `<button type="button" id="tab-${id}" role="tab" data-tab="${id}" aria-controls="panel-${id}" aria-selected="${ui._tab === id}" tabindex="${ui._tab === id ? '0' : '-1'}">${t(ko, en)}</button>`).join('')}</nav></div></header>`;
 }
 function heading(title, copy, action = '') {
-  return `<div class="hc-page-heading"><div><h1 tabindex="-1" id="pageTitle">${esc(title)}</h1><p>${esc(copy)}</p></div>${action}</div>`;
+  return `<div class="hc-page-heading"><div><p class="hl-eyebrow" aria-hidden="true">HEALTH &amp; HOME</p><h1 tabindex="-1" id="pageTitle">${esc(title)}</h1><p>${esc(copy)}</p></div>${action}</div>`;
 }
 function overview(ui, p) {
   const t = ui._t.bind(ui), n = ui._number.bind(ui), stamp = ui._date.bind(ui);
@@ -72,10 +79,10 @@ function explorer(ui) {
   const catalogError = ui._errors.catalog ? errorView(ui, ui._errors.catalog, t('건강 항목을 갱신하지 못했어요.','Health metrics could not be refreshed.')) : '';
   const rows = ui._catalog.map((x, i) => {
     const key = `expose:${ui._entryId}:${x.type_id}`, busy = ui._mutations.has(key);
-    return `<li class="hc-list-row hl-data-row" data-metric-row data-name="${esc([x.display_name, x.type_id, x.domain].join(' ').toLowerCase())}" data-exposed="${Boolean(x.exposed)}"><div><strong>${esc(x.display_name || x.type_id)}</strong><small class="hl-id">${esc(x.type_id)}</small><small>${esc(n(x.sample_count))} ${t('개 기록','records')} · ${t('최근 데이터','Last data')} ${esc(ui._date(x.last_sample))}</small></div><div class="hl-row-actions">${badge(x.exposed ? t('HA 노출 설정됨','HA exposure enabled') : t('보관 중','Stored'), x.exposed ? 'success' : '')}${button('expose', busy ? t('저장 중…','Saving…') : x.exposed ? t('센서 숨기기','Hide sensor') : t('센서 생성','Create sensor'), 'hc-secondary', `data-index="${i}" ${busy ? 'disabled aria-busy="true"' : ''} aria-label="${esc(x.display_name || x.type_id)} ${x.exposed ? t('센서 숨기기','hide sensor') : t('센서 생성','create sensor')}"`)}</div></li>`;
+    return `<li class="hc-list-row hl-data-row" data-metric-row data-name="${esc(metricSearchText(ui,x))}" data-exposed="${Boolean(x.exposed)}"><div><strong>${esc(metricName(ui,x))}</strong><small class="hl-id">${esc(x.type_id)}</small><small>${esc(n(x.sample_count))} ${t('개 기록','records')} · ${t('최근 데이터','Last data')} ${esc(ui._date(x.last_sample))}</small></div><div class="hl-row-actions">${badge(x.exposed ? t('HA 노출 설정됨','HA exposure enabled') : t('보관 중','Stored'), x.exposed ? 'success' : '')}${button('expose', busy ? t('저장 중…','Saving…') : x.exposed ? t('센서 숨기기','Hide sensor') : t('센서 생성','Create sensor'), 'hc-secondary', `data-index="${i}" ${busy ? 'disabled aria-busy="true"' : ''} aria-label="${esc(metricName(ui,x))} ${x.exposed ? t('센서 숨기기','hide sensor') : t('센서 생성','create sensor')}"`)}</div></li>`;
   }).join('');
   const composers = ui._composers.map(c => `<li class="hc-list-row"><div><strong>${esc(c.name)}</strong><small>${esc(c.id)} · v${esc(c.version)}</small></div>${button('delete', t('삭제','Delete'), 'hc-danger', `data-id="${esc(c.id)}" aria-label="${esc(c.name)} ${t('센서 삭제','delete sensor')}"`)}</li>`).join('');
-  return heading(t('내 건강 데이터','My health data'), t('실제로 받은 항목을 확인하고, 필요한 센서만 생성하세요.','Review the metrics actually received and create only the sensors you need.'), button('create', `${icon('plus')}${t('센서 만들기','Create sensor')}`, 'hc-primary', `id="newSensor" ${!metricOptions(ui) || ui._errors.composers ? 'disabled' : ''}`)) +
+  return heading(t('내 건강 데이터','My health data'), t('실제로 받은 항목을 확인하고, 필요한 센서만 생성하세요.','Review the metrics actually received and create only the sensors you need.'), `<div class="hl-heading-actions">${button('ecg-guide', t('심전도 가져오기 안내','ECG import guide'), 'hc-secondary')}${button('create', `${icon('plus')}${t('센서 만들기','Create sensor')}`, 'hc-primary', `id="newSensor" ${!metricOptions(ui) || ui._errors.composers ? 'disabled' : ''}`)}</div>`) +
     (!metricOptions(ui) ? `<p class="hc-note hl-before">${t('센서 만들기는 건강 기록을 받은 뒤 사용할 수 있어요.','Sensor creation becomes available after health records arrive.')}</p>` : '') + catalogError +
     `<div class="hc-toolbar"><div class="hl-search"><label for="search">${t('건강 항목 검색','Search health metrics')}</label><input id="search" type="search" placeholder="${t('이름, HealthKit ID, 영역','Name, HealthKit ID, domain')}" aria-controls="catalogList"></div><div class="hl-filter"><label for="exposureFilter">${t('표시 범위','Show')}</label><select id="exposureFilter"><option value="all">${t('전체 항목','All metrics')}</option><option value="exposed">${t('HA 노출 설정됨','HA exposure enabled')}</option><option value="stored">${t('보관 중','Stored only')}</option></select></div></div>
     ${card(t('받아온 건강 항목','Received metrics'), rows ? `<ul class="hc-list" id="catalogList">${rows}</ul><div id="noMatches" hidden>${empty(t('검색 결과가 없어요.','No matching metrics.'), t('검색어나 표시 범위를 바꿔 주세요.','Change the search or filter.'))}</div>` : empty(ui._errors.catalog ? t('항목 조회 실패','Metric lookup failed') : t('아직 받은 건강 항목이 없어요.','No health metrics received yet.'), t('연결 탭에서 데이터 수집 방법을 확인하세요.','Check the Connection tab to set up data collection.'), button('connection', t('연결 안내 보기','View connection guide'), 'hc-secondary')), `<span id="filterCount" class="hl-count" role="status"></span>`)}
@@ -101,7 +108,7 @@ export function resultView(ui, key) {
   if (key === 'timeline') {
     const data = result.data, events = data.events || [], shown = events.slice(-300).reverse();
     if (!shown.length) return empty(t('선택한 기간에 기록이 없어요.','No records in the selected window.'), t('항목이나 조회 기간을 바꿔 보세요.','Try another metric or time window.'));
-    return `<section class="hc-card hl-query-body"><div class="hc-table-scroll" tabindex="0" role="region" aria-label="${t('건강과 집 기록 표','Health and home records table')}"><table class="hc-table"><caption>${t('응답 기록','Returned records')} ${esc(ui._number(events.length))}${t('개 중 최근',' · latest')} ${shown.length}${t('개 표시',' shown')}<br>${esc(ui._date(data.start))} ~ ${esc(ui._date(data.end))}</caption><thead><tr>${[t('시간','Time'),t('출처','Source'),t('항목','Metric'),t('값','Value')].map(x => `<th scope="col">${x}</th>`).join('')}</tr></thead><tbody>${shown.map(x => `<tr><td>${esc(ui._date(x.time))}</td><td>${x.source === 'healthkit' ? 'HealthKit' : 'Home Assistant'}</td><th scope="row">${esc(x.id)}</th><td>${esc(x.value ?? '—')} ${esc(x.unit || '')}</td></tr>`).join('')}</tbody></table></div></section>`;
+    return `<section class="hc-card hl-query-body"><div class="hc-table-scroll" tabindex="0" role="region" aria-label="${t('건강과 집 기록 표','Health and home records table')}"><table class="hc-table"><caption>${t('응답 기록','Returned records')} ${esc(ui._number(events.length))}${t('개 중 최근',' · latest')} ${shown.length}${t('개 표시',' shown')}<br>${esc(ui._date(data.start))} ~ ${esc(ui._date(data.end))}</caption><thead><tr>${[t('시간','Time'),t('출처','Source'),t('항목','Metric'),t('값','Value')].map(x => `<th scope="col">${x}</th>`).join('')}</tr></thead><tbody>${shown.map(x => `<tr><td>${esc(ui._date(x.time))}</td><td>${x.source === 'healthkit' ? 'HealthKit' : 'Home Assistant'}</td><th scope="row">${esc(x.source === 'healthkit' ? metricName(ui, ui._catalog.find(m => m.type_id === x.id) || {type_id:x.id}) : ui._hass?.states?.[x.id]?.attributes?.friendly_name || x.id)}<small>${esc(x.id)}</small></th><td>${esc(x.value ?? '—')} ${esc(x.unit || '')}</td></tr>`).join('')}</tbody></table></div></section>`;
   }
   const [corr, opt] = result.data;
   const parts = [corr.status === 'fulfilled' ? card(t('관측된 연관성','Observed association'), `<ul class="hc-list">${row(t('비교 가능한 샘플','Matched samples'), ui._number(corr.value.pairs))}${row(t('상관계수','Correlation'), ui._number(corr.value.correlation))}${row(t('연관 강도','Association strength'), ({strong:t('강함','Strong'),moderate:t('보통','Moderate'),weak:t('약함','Weak'),insufficient_data:t('데이터 부족','Insufficient data'),none:t('뚜렷하지 않음','No clear association')})[corr.value.strength] || corr.value.strength || '—')}</ul>`) : errorView(ui, corr.reason, t('상관 분석 실패','Correlation query failed')),
@@ -114,7 +121,7 @@ function connection(ui, p) {
   return heading(t('연결과 수신 상태','Connection & collection'), t('프로필과 Apple 기기 설정, 마지막 수신 시각을 확인하세요.','Check the profile, Apple device settings and last received time.'), link(t('연결 설정 열기','Open connection settings'), undefined, 'hl-button hc-primary')) +
     `<div class="hc-grid hl-no-top"><div class="hl-stack">${card(t('이 프로필의 수집 상태','Collection for this profile'), `<ul class="hc-list">${row(t('수집 방식','Collection mode'),mode)}${row(t('Companion 수집','Companion collection'),state,t('수집 활성화는 기기의 실시간 연결을 뜻하지 않아요.','Enabled collection does not indicate live device connectivity.'))}${row(t('연결한 Apple 기기','Selected Apple devices'),ui._number(p.companion_device_count))}${row(t('수집 소스 센서','Source sensors'),ui._number(p.companion_sensor_count))}${row(t('최근 수신','Last received'),p.last_sync ? ui._date(p.last_sync) : t('미수신','Not received'))}</ul>`)}
     <section class="hc-card"><div class="hc-card-head"><h2>${t('데이터 연결 방법','How to connect data')}</h2></div><ol class="hl-steps"><li><strong>${t('공식 Home Assistant 앱 열기','Open the official Home Assistant app')}</strong><p>${t('별도의 HealthLink iOS 앱은 필요하지 않아요.','A separate HealthLink iOS app is not required.')}</p></li><li><strong>${t('공유할 Apple 건강 센서 켜기','Enable the Apple Health sensors to share')}</strong><p>${t('앱 설정 → 센서 → Apple 건강 센서(Labs)에서 원하는 항목을 선택하세요.','In app settings → Sensors → Apple Health Sensors (Labs), choose the metrics to share.')}</p></li><li><strong>${t('내 프로필에 맞는 Apple 기기 선택','Select this person’s Apple device')}</strong><p>${t('여러 사람의 건강 기록이 섞이지 않도록, 같은 사람의 기기만 연결하세요.','Connect only devices belonging to the same person to avoid mixing household records.')}</p>${link(t('프로필 설정 열기','Open profile settings'))}</li></ol></section></div>
-    <aside class="hl-stack"><section class="hc-promo hl-promo"><h2>${t('기록 가져오기','Import records')}</h2><p>${t('ECG·Apple 건강 원본 가져오기는 기존 HA 통합 설정에서 진행해요.','Import ECG and Apple Health exports in the existing HA integration settings.')}</p>${link(t('가져오기 설정 열기','Open import settings'))}</section><div class="hl-privacy">${icon('shield')}<p>${t('민감 항목 노출·자동 제어·건강 데이터 쓰기 권한은 이 화면에서 자동으로 변경하지 않아요.','This screen never automatically changes sensitive exposure, automatic control or health write permissions.')}</p></div></aside></div>`;
+    <aside class="hl-stack"><section class="hc-promo hl-promo"><h2>${t('기록 가져오기','Import records')}</h2><p>${t('ECG·Apple 건강 원본 가져오기는 기존 HA 통합 설정에서 진행해요.','Import ECG and Apple Health exports in the existing HA integration settings.')}</p>${link(t('가져오기 설정 열기','Open import settings'))}</section><div class="hl-privacy">${icon('shield')}<p>${t('민감 항목 노출·자동 제어·건강 데이터 쓰기 권한은 이 화면에서 자동으로 변경하지 않아요.','This screen never automatically changes sensitive exposure, automatic control or health write permissions.')}</p></div></aside></div>` + ecgHelpView(ui);
 }
 export function bodyView(ui) {
   const t = ui._t.bind(ui), p = ui._profile();

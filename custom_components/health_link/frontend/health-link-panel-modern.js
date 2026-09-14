@@ -1,7 +1,9 @@
 /** HealthLink Studio — presentation-only redesign, design system 1.0.0.
  * No external runtime dependencies. Existing administrator WebSocket APIs only.
  */
-import { TABS, STYLES, esc, numeric, headerView, bodyView, editorView, errorView, resultView } from './health-link-studio-view.js?v=20260913.1';
+import { TABS, STYLES, esc, numeric, headerView, bodyView, editorView, errorView, resultView } from './health-link-studio-view.js?v=20260914.3';
+import { UNIFIED_STYLES } from './health-link-studio-unified.css.js?v=20260914.3';
+import { mountNativeHeader, syncNativeHeader } from './health-link-studio-host.js?v=20260914.3';
 import { STUDIO_BRAND, STUDIO_BRANDING_STYLES, bindStudioLogo } from './health-link-studio-branding.js?v=20260914.1';
 
 class HealthLinkPanel extends HTMLElement {
@@ -23,7 +25,7 @@ class HealthLinkPanel extends HTMLElement {
   }
 
   set hass(value) {
-    const first = !this._hass, language = this._hass?.language, previousAdmin = this._hass?.user?.is_admin;
+    const first = !this._hass, language = this._hass?.language, connected = this._hass?.connected, previousAdmin = this._hass?.user?.is_admin;
     this._hass = value;
     if (!this._active) return;
     this._theme();
@@ -33,8 +35,22 @@ class HealthLinkPanel extends HTMLElement {
     }
     if (first || previousAdmin === false) this._load();
     else if (language !== value?.language) this._render();
+    else if (connected !== value?.connected) this._render({body:false});
   }
-  set panel(value) { this._panel = value; }
+  set panel(value) {
+    if (value === this._panel) return;
+    this._panel = value;
+    syncNativeHeader(this);
+    if (this._active) this._render({body:false});
+  }
+  set narrow(value) {
+    const next = Boolean(value);
+    if (next === this._narrow) return;
+    this._narrow = next;
+    // HA owns the breakpoint. Do not rerender content or recreate editor drafts.
+    syncNativeHeader(this);
+  }
+  get narrow() { return Boolean(this._narrow); }
   get _ko() { return (this._hass?.language || navigator.language || 'en').toLowerCase().startsWith('ko'); }
   _t(ko, en) { return this._ko ? ko : en; }
   _profile() { return this._profiles.find(p => p.config_entry_id === this._entryId); }
@@ -53,6 +69,7 @@ class HealthLinkPanel extends HTMLElement {
   _theme() {
     const root = this.shadowRoot.querySelector('.hc-root');
     if (root) root.dataset.theme = this._hass?.themes?.darkMode ? 'dark' : 'light';
+    syncNativeHeader(this);
   }
 
   connectedCallback() {
@@ -75,7 +92,8 @@ class HealthLinkPanel extends HTMLElement {
     this._closeEditor(true, false);
   }
   _mount() {
-    this.shadowRoot.innerHTML = `<style>${STYLES}${STUDIO_BRANDING_STYLES}</style><div class="hc-root"><div id="headerHost"></div><main class="hc-wrap hc-main"><div id="statusHost"></div>${TABS.map(([id]) => `<section id="panel-${id}" role="tabpanel" aria-labelledby="tab-${id}" tabindex="-1" hidden></section>`).join('')}<footer class="hc-footer"><span>HealthLink Studio</span><span id="checkTime"></span></footer></main><dialog id="editor" class="hc-dialog" aria-labelledby="editorTitle" aria-modal="true"></dialog><div id="live" class="hc-sr-only" role="status" aria-live="polite"></div></div>`;
+    this.shadowRoot.innerHTML = `<style>${STYLES}${STUDIO_BRANDING_STYLES}${UNIFIED_STYLES}</style><div class="hc-root"><a class="hl-skip-link" data-action="skip-main" href="#main-content">${this._t('본문으로 건너뛰기','Skip to main content')}</a><div id="headerHost"></div><main id="main-content" tabindex="-1" class="hc-wrap hc-main"><div id="statusHost"></div>${TABS.map(([id]) => `<section id="panel-${id}" role="tabpanel" aria-labelledby="tab-${id}" tabindex="-1" hidden></section>`).join('')}<footer class="hc-footer"><span>HealthLink Studio</span><span id="checkTime"></span></footer></main><dialog id="editor" class="hc-dialog" aria-labelledby="editorTitle" aria-modal="true"></dialog><div id="live" class="hc-sr-only" role="status" aria-live="polite"></div></div>`;
+    mountNativeHeader(this);
     this.shadowRoot.addEventListener('click', e => this._click(e));
     this.shadowRoot.addEventListener('keydown', e => this._keydown(e));
     this.shadowRoot.addEventListener('input', e => this._input(e));
@@ -106,7 +124,9 @@ class HealthLinkPanel extends HTMLElement {
     this.shadowRoot.getElementById('headerHost').innerHTML = headerView(this);
     const settings = this.shadowRoot.querySelector('.hl-settings');
     settings?.setAttribute('aria-label', this._t('HealthLink 설정','HealthLink settings'));
+    settings?.setAttribute('title', this._t('HealthLink 설정','HealthLink settings'));
     bindStudioLogo(this);
+    this.shadowRoot.querySelector('.hl-skip-link').textContent = this._t('본문으로 건너뛰기','Skip to main content');
     for (const [id] of TABS) {
       const panel = this.shadowRoot.getElementById(`panel-${id}`); panel.hidden = id !== this._tab;
       if (id !== this._tab) panel.replaceChildren();
@@ -207,6 +227,16 @@ class HealthLinkPanel extends HTMLElement {
     if (tab) { this._navigate(tab.dataset.tab); return; }
     const el = event.target.closest('[data-action]'); if (!el || el.disabled) return;
     const action = el.dataset.action;
+    if (action === 'skip-main') {
+      event.preventDefault();
+      this.shadowRoot.getElementById('main-content')?.focus();
+    }
+    if (action === 'ecg-guide') {
+      this._navigate('connect');
+      const guide = this.shadowRoot.getElementById('ecgGuideTitle');
+      guide?.scrollIntoView({block:'start'});
+      guide?.focus({preventScroll:true});
+    }
     if (action === 'menu') this.dispatchEvent(new CustomEvent('hass-toggle-menu',{bubbles:true,composed:true}));
     if (action === 'overview') this._navigate('today');
     if (action === 'data') this._navigate('explorer');
