@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription, SensorStateClass
@@ -107,8 +107,12 @@ class HealthLinkSensor(_Base,SensorEntity):
     def native_value(self):
         value=self.entity_description.value_fn(self.coordinator.data or {})
         if self.entity_description.key=="last_sync" and isinstance(value,str):
-            try:return datetime.fromisoformat(value)
-            except ValueError:return None
+            try:
+                parsed=datetime.fromisoformat(value)
+            except ValueError:
+                return None
+            # HA timestamp sensors require an aware datetime; never emit naive.
+            return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
         if isinstance(value,float):return round(value,2)
         return value
     @property

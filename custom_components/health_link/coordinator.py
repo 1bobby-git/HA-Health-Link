@@ -104,8 +104,14 @@ class HealthLinkCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         last=status.get("last_sync")
         latency=None
         if last:
-            try: latency=max(0,(datetime.now(timezone.utc)-datetime.fromisoformat(last)).total_seconds())
-            except ValueError: pass
+            try:
+                parsed=datetime.fromisoformat(last)
+                # A legacy or externally-modified meta row could be timezone-naive;
+                # assume UTC rather than raising TypeError and breaking every entity.
+                if parsed.tzinfo is None:
+                    parsed=parsed.replace(tzinfo=timezone.utc)
+                latency=max(0,(datetime.now(timezone.utc)-parsed).total_seconds())
+            except (TypeError, ValueError): pass
         stale_hours=float(opts.get("stale_hours",24))
         stale=latency is None or latency>stale_hours*3600
         freshness=0.0 if stale else 1.0 if latency is not None and latency<3600 else 0.75
