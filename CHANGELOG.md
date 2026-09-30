@@ -2,6 +2,16 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.3.9] - 2026-09-30
+
+### Fixed
+- Guard the coordinator against a timezone-naive `last_sync` value. Live writes are always UTC-aware, but a migrated or externally-edited `meta` row could be naive; subtracting it from an aware `now` raised `TypeError`, which escaped the `ValueError`-only guard and stopped every derived sensor from updating. Naive values are now treated as UTC.
+- Ensure the `last_sync` timestamp sensor always returns a timezone-aware datetime. Home Assistant rejects naive datetimes for `SensorDeviceClass.TIMESTAMP`, so a naive stored value is normalized to UTC.
+
+### Validation
+- Add regression tests proving the snapshot survives naive/garbage `last_sync` values (still reported as stale) and that the timestamp sensor stays timezone-aware.
+- Pin `read_text(encoding="utf-8")` in tests that read UTF-8 source/manifest files so they pass regardless of the runner's default locale (they previously failed on non-UTF-8 locales such as Korean Windows; Linux CI was unaffected).
+
 ## [0.3.4] - 2026-09-13
 
 ### ECG import compatibility and speed
