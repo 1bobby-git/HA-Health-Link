@@ -2,6 +2,14 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.3.10] - 2026-10-30
+
+### Fixed
+- Make the daily Validate (hassfest) run pass again. `defusedxml` is a package Home Assistant ships, so the requirement is now a minimum version (`defusedxml>=0.7.1`) instead of an exact pin, and the integration declares `CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)` because it implements `async_setup` but is set up from config entries only.
+
+### Validation
+- Add tests that pin both hassfest rules.
+
 ## [0.3.9] - 2026-09-30
 
 ### Fixed
