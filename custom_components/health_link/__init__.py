@@ -8,6 +8,7 @@ from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 
 from .companion import CompanionImporter
 from .const import (
@@ -38,6 +39,8 @@ from .websocket import async_register_websocket_api
 _data_features.read_file = _fast_health_read_file
 
 _LOGGER = logging.getLogger(__name__)
+# Set up from config entries only; async_setup just registers shared resources.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 _PANEL_PATH = "health-link-studio"
 _LEGACY_PANEL_PATH = "health-link"
 _STATIC_URL = "/health_link_static"

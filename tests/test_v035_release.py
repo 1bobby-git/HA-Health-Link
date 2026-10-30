@@ -7,5 +7,5 @@ from custom_components.health_link.const import VERSION
 
 def test_release_versions_match():
     manifest = json.loads((Path(__file__).resolve().parents[1] / 'custom_components/health_link/manifest.json').read_text(encoding="utf-8"))
-    assert VERSION == '0.3.9'
+    assert VERSION == '0.3.10'
     assert manifest['version'] == VERSION
