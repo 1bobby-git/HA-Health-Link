@@ -2,6 +2,14 @@
 
 All notable changes to HealthLink are documented here.
 
+## [0.3.11] - 2026-11-09
+
+### Fixed
+- Stop reading the deprecated `DeviceEntry.config_entries` when discovering Companion iPhone/iPad devices. Since Home Assistant 2026.11 every read of that field runs a usage report that walks the call stack and loaded modules, which is expensive on installs with many devices. Discovery now asks the device registry for each Companion (`mobile_app`) registration's devices through its config-entry index (`async_entries_for_config_entry`) instead of scanning every device. The device list, names and eligibility rules are unchanged; a device shared by several integrations is still listed once.
+
+### Validation
+- Add regression tests with fake devices whose `config_entries`, `config_entries_subentries` and `primary_config_entry` raise when read, covering single-owner devices, devices shared by several config entries, and installs without Companion registrations.
+
 ## [0.3.10] - 2026-10-30
 
 ### Fixed
