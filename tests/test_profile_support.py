@@ -44,11 +44,97 @@ def test_registered_iphone_and_ipad_are_discoverable_without_health_entities(mon
                    ("android", "Google", "Pixel", "Android"),
                    ("mac", "Apple", "MacBook", "Mac"),
                ]}
-    from custom_components.health_link import profile_support
-    monkeypatch.setattr(profile_support.dr, "async_get", lambda hass: NS(devices=devices))
-    monkeypatch.setattr(profile_support.er, "async_get", lambda hass: NS(entities={}))
+    _patch_registries(monkeypatch, devices)
     hass = NS(config_entries=NS(async_entries=lambda domain: registrations if domain == "mobile_app" else []))
     assert discover_ios_devices(hass) == {"ios": "가족 iPhone", "ipad": "가족 iPad"}
+
+
+class _GuardedDevice:
+    """Device whose deprecated config-entry fields fail loudly when read.
+
+    HA 2026.11 deprecates DeviceEntry.config_entries / config_entries_subentries /
+    primary_config_entry; every read runs report_usage(), which walks the stack
+    and sys.modules and can dominate the event loop on large installs.
+    """
+
+    def __init__(self, device_id, owners, *, manufacturer="Apple", model="iPhone17,3", name=None):
+        self.id = device_id
+        self.owners = frozenset(owners)
+        self.manufacturer = manufacturer
+        self.model = model
+        self.name = name or device_id
+        self.name_by_user = None
+
+    @property
+    def config_entries(self):
+        raise AssertionError("deprecated DeviceEntry.config_entries was read")
+
+    @property
+    def config_entries_subentries(self):
+        raise AssertionError("deprecated DeviceEntry.config_entries_subentries was read")
+
+    @property
+    def primary_config_entry(self):
+        raise AssertionError("deprecated DeviceEntry.primary_config_entry was read")
+
+
+def _patch_registries(monkeypatch, devices):
+    """Fake the device registry; owners are resolvable only via the per-entry index."""
+    from custom_components.health_link import profile_support
+
+    registry = NS(devices=devices)
+    calls = []
+
+    def entries_for_config_entry(reg, entry_id):
+        assert reg is registry
+        calls.append(entry_id)
+        return [d for d in devices.values()
+                if entry_id in (d.owners if isinstance(d, _GuardedDevice) else d.config_entries)]
+
+    monkeypatch.setattr(profile_support.dr, "async_get", lambda hass: registry)
+    monkeypatch.setattr(profile_support.dr, "async_entries_for_config_entry", entries_for_config_entry)
+    monkeypatch.setattr(profile_support.er, "async_get", lambda hass: NS(entities={}))
+    return calls
+
+
+def test_discovery_never_reads_deprecated_device_config_entries(monkeypatch):
+    registrations = [
+        entry("ios", data={"os_name": "iOS", "model": "iPhone17,3", "manufacturer": "Apple"}),
+        entry("android", data={"os_name": "Android", "manufacturer": "Google"}),
+    ]
+    devices = {
+        "phone": _GuardedDevice("phone", {"ios"}, name="내 iPhone"),
+        "pixel": _GuardedDevice("pixel", {"android"}, manufacturer="Google", model="Pixel"),
+        # A device owned only by a non-Companion integration is never considered.
+        "light": _GuardedDevice("light", {"hue"}, manufacturer="Signify", model="Bulb"),
+    }
+    calls = _patch_registries(monkeypatch, devices)
+    hass = NS(config_entries=NS(async_entries=lambda domain: registrations if domain == "mobile_app" else []))
+    assert discover_ios_devices(hass) == {"phone": "내 iPhone"}
+    # Only the Companion registrations are looked up through the index.
+    assert sorted(calls) == ["android", "ios"]
+
+
+def test_composite_device_keeps_all_companion_registrations(monkeypatch):
+    """A device shared by several entries is listed once; any iOS owner qualifies it."""
+    registrations = [
+        entry("android", data={"os_name": "Android", "manufacturer": "Google"}),
+        entry("ios", data={"os_name": "iOS", "model": "iPhone17,3", "manufacturer": "Apple"}),
+    ]
+    devices = {
+        "shared": _GuardedDevice("shared", {"android", "ios", "other"}, name="공유 iPhone"),
+        "android-only": _GuardedDevice("android-only", {"android"}, manufacturer="Google", model="Pixel"),
+    }
+    _patch_registries(monkeypatch, devices)
+    hass = NS(config_entries=NS(async_entries=lambda domain: registrations if domain == "mobile_app" else []))
+    assert discover_ios_devices(hass) == {"shared": "공유 iPhone"}
+
+
+def test_discovery_without_companion_registrations_lists_nothing(monkeypatch):
+    calls = _patch_registries(monkeypatch, {"phone": _GuardedDevice("phone", {"ios"})})
+    hass = NS(config_entries=NS(async_entries=lambda domain: []))
+    assert discover_ios_devices(hass) == {}
+    assert calls == []
 
 
 def test_exactly_one_remaining_iphone_is_shown(monkeypatch):

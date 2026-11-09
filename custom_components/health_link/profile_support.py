@@ -64,11 +64,18 @@ def discover_ios_devices(hass) -> dict[str, str]:
         if e.platform == "mobile_app" and e.domain == "sensor" and e.device_id
         and "health_" in str(e.unique_id or "")
     }
+    # Look devices up per Companion registration through the registry's
+    # config-entry index. Never read DeviceEntry.config_entries: it is deprecated
+    # since HA 2026.11 and every read runs an expensive usage report.
+    devices: dict[str, Any] = {}
+    device_registrations: dict[str, list[Any]] = {}
+    for registration in mobile.values():
+        for device in dr.async_entries_for_config_entry(registry, registration.entry_id):
+            devices.setdefault(device.id, device)
+            device_registrations.setdefault(device.id, []).append(registration)
     result: dict[str, str] = {}
-    for device in registry.devices.values():
-        registrations = [mobile[eid] for eid in device.config_entries if eid in mobile]
-        if not registrations:
-            continue
+    for device_id, device in devices.items():
+        registrations = device_registrations[device_id]
         eligible = False
         for registration in registrations:
             data = registration.data
